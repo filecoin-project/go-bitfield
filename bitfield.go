@@ -18,7 +18,7 @@ type BitField struct {
 	bits map[uint64]struct{}
 }
 
-func NewBitField() BitField {
+func New() BitField {
 	bf, err := NewBitFieldFromBytes([]byte{})
 	if err != nil {
 		panic(fmt.Sprintf("creating empty rle: %+v", err))
@@ -26,7 +26,7 @@ func NewBitField() BitField {
 	return bf
 }
 
-func NewBitFieldFromBytes(rle []byte) (BitField, error) {
+func NewFromBytes(rle []byte) (BitField, error) {
 	bf := BitField{}
 	rlep, err := rlepluslazy.FromBuf(rle)
 	if err != nil {
@@ -38,7 +38,7 @@ func NewBitFieldFromBytes(rle []byte) (BitField, error) {
 
 }
 
-func BitFieldFromSet(setBits []uint64) BitField {
+func NewFromSet(setBits []uint64) BitField {
 	res := BitField{bits: make(map[uint64]struct{})}
 	for _, b := range setBits {
 		res.bits[b] = struct{}{}
