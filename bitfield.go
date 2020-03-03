@@ -1,4 +1,4 @@
-package types
+package bitfield
 
 import (
 	"errors"
