@@ -8,14 +8,14 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestSumRuns(t *testing.T) {
+func TestOrRuns(t *testing.T) {
 	{
 		a, err := RunsFromSlice([]uint64{0, 1, 2, 3, 4, 5, 6, 7, 8, 11, 12, 13, 14})
 		assert.NoError(t, err)
 		b, err := RunsFromSlice([]uint64{0, 1, 2, 3, 9, 10, 16, 17, 18, 50, 51, 70})
 		assert.NoError(t, err)
 
-		s, err := Sum(a, b)
+		s, err := Or(a, b)
 		assert.NoError(t, err)
 		bis, err := SliceFromRuns(s)
 		assert.Equal(t, []uint64{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 16, 17, 18, 50, 51, 70}, bis)
@@ -28,7 +28,7 @@ func TestSumRuns(t *testing.T) {
 		b, err := RunsFromSlice([]uint64{0, 1, 2, 3, 9, 10, 16, 17, 18, 50, 51, 70})
 		assert.NoError(t, err)
 
-		s, err := Sum(b, a)
+		s, err := Or(b, a)
 		assert.NoError(t, err)
 		bis, err := SliceFromRuns(s)
 		assert.Equal(t, []uint64{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 16, 17, 18, 50, 51, 70}, bis)
@@ -72,9 +72,26 @@ func sum(a, b []uint64) []uint64 {
 	return res
 }
 
-func TestSumRandom(t *testing.T) {
-	N := 100
+func and(a, b []uint64) []uint64 {
+	amap := make(map[uint64]struct{})
+	for _, x := range a {
+		amap[x] = struct{}{}
+	}
 
+	res := make([]uint64, 0)
+	for _, x := range b {
+		if _, ok := amap[x]; ok {
+			res = append(res, x)
+		}
+
+	}
+	sort.Slice(res, func(i, j int) bool { return res[i] < res[j] })
+
+	return res
+}
+
+func TestOrRandom(t *testing.T) {
+	N := 100
 	for i := 0; i < N; i++ {
 		abits := randomBits(1000, 1500)
 		bbits := randomBits(1000, 1500)
@@ -85,7 +102,7 @@ func TestSumRandom(t *testing.T) {
 		b, err := RunsFromSlice(bbits)
 		assert.NoError(t, err)
 
-		s, err := Sum(b, a)
+		s, err := Or(b, a)
 		assert.NoError(t, err)
 		bis, err := SliceFromRuns(s)
 		assert.NoError(t, err)
