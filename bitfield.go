@@ -284,6 +284,15 @@ func (bf *BitField) ForEach(f func(uint64) error) error {
 	return nil
 }
 
+func (bf *BitField) IsSet(x uint64) (bool, error) {
+	iter, err := bf.sum()
+	if err != nil {
+		return false, err
+	}
+
+	return rlepluslazy.IsSet(iter, x)
+}
+
 func (bf *BitField) First() (uint64, error) {
 	iter, err := bf.sum()
 	if err != nil {

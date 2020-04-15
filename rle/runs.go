@@ -117,3 +117,20 @@ func Count(ri RunIterator) (uint64, error) {
 	}
 	return count, nil
 }
+
+func IsSet(ri RunIterator, x uint64) (bool, error) {
+	var i uint64
+	for ri.HasNext() {
+		r, err := ri.NextRun()
+		if err != nil {
+			return false, err
+		}
+
+		if i+r.Len > x {
+			return r.Val, nil
+		}
+
+		i += r.Len
+	}
+	return false, nil
+}
