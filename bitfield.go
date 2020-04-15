@@ -459,32 +459,3 @@ func (ri *runsIterator) NextRun() (rlepluslazy.Run, error) {
 	ri.i++
 	return out, nil
 }
-
-func (bf *BitField) Union(obf BitField) (*BitField, error) {
-	a, err := bf.rle.RunIterator()
-	if err != nil {
-		return nil, err
-	}
-
-	b, err := obf.rle.RunIterator()
-	if err != nil {
-		return nil, err
-	}
-
-	union, err := rlepluslazy.Or(a, b)
-	if err != nil {
-		return nil, err
-	}
-
-	buf, err := rlepluslazy.EncodeRuns(union, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	rle, err := rlepluslazy.FromBuf(buf)
-	if err != nil {
-		return nil, err
-	}
-
-	return newWithRle(rle), nil
-}

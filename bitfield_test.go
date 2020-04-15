@@ -132,7 +132,7 @@ func TestBitfieldUnion(t *testing.T) {
 	bfa := NewFromSet(a)
 	bfb := NewFromSet(b)
 
-	bfu, err := bfa.Union(bfb)
+	bfu, err := MergeBitFields(bfa, bfb)
 	if err != nil {
 		t.Fatal(err)
 	}
