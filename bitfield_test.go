@@ -175,3 +175,46 @@ func TestBitfieldJson(t *testing.T) {
 		t.Fatal("round trip failed")
 	}
 }
+
+func setIntersect(a, b []uint64) []uint64 {
+	m := make(map[uint64]bool)
+	for _, v := range a {
+		m[v] = true
+	}
+
+	var out []uint64
+	for _, v := range b {
+		if m[v] {
+			out = append(out, v)
+		}
+	}
+	return out
+}
+
+func TestBitfieldIntersect(t *testing.T) {
+	a := getRandIndexSetSeed(100, 1)
+	b := getRandIndexSetSeed(100, 2)
+
+	bfa := NewFromSet(a)
+	bfb := NewFromSet(b)
+
+	inter, err := IntersectBitField(bfa, bfb)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	out, err := inter.All(10000)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	exp := setIntersect(a, b)
+
+	if !slicesEqual(out, exp) {
+		fmt.Println(a)
+		fmt.Println(b)
+		fmt.Println(out)
+		fmt.Println(exp)
+		t.Fatal("intersection is wrong")
+	}
+}

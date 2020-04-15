@@ -49,8 +49,8 @@ func newWithRle(rle rlepluslazy.RLE) *BitField {
 	}
 }
 
-func NewFromSet(setBits []uint64) BitField {
-	res := BitField{
+func NewFromSet(setBits []uint64) *BitField {
+	res := &BitField{
 		set:   make(map[uint64]struct{}),
 		unset: make(map[uint64]struct{}),
 	}
@@ -60,36 +60,47 @@ func NewFromSet(setBits []uint64) BitField {
 	return res
 }
 
-func MergeBitFields(a, b BitField) (BitField, error) {
+func NewFromIter(r rlepluslazy.RunIterator) (*BitField, error) {
+	buf, err := rlepluslazy.EncodeRuns(r, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	rle, err := rlepluslazy.FromBuf(buf)
+	if err != nil {
+		return nil, err
+	}
+
+	return newWithRle(rle), nil
+}
+
+func MergeBitFields(a, b *BitField) (*BitField, error) {
 	ra, err := a.sum()
 	if err != nil {
-		return BitField{}, err
+		return nil, err
 	}
 
 	rb, err := b.sum()
 	if err != nil {
-		return BitField{}, err
+		return nil, err
 	}
 
 	merge, err := rlepluslazy.Or(ra, rb)
 	if err != nil {
-		return BitField{}, err
+		return nil, err
 	}
 
 	mergebytes, err := rlepluslazy.EncodeRuns(merge, nil)
 	if err != nil {
-		return BitField{}, err
+		return nil, err
 	}
 
 	rle, err := rlepluslazy.FromBuf(mergebytes)
 	if err != nil {
-		return BitField{}, err
+		return nil, err
 	}
 
-	return BitField{
-		rle: rle,
-		set: make(map[uint64]struct{}),
-	}, nil
+	return newWithRle(rle), nil
 }
 
 func (bf BitField) sum() (rlepluslazy.RunIterator, error) {
@@ -428,7 +439,7 @@ func (bf *BitField) Slice(start, count uint64) (*BitField, error) {
 		return nil, fmt.Errorf("not enough bits set in field to satisfy slice count")
 	}
 
-	buf, err := rlepluslazy.EncodeRuns(&runsIterator{runs: sliceRuns}, nil)
+	buf, err := rlepluslazy.EncodeRuns(&rlepluslazy.RunSliceIterator{Runs: sliceRuns}, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -441,21 +452,31 @@ func (bf *BitField) Slice(start, count uint64) (*BitField, error) {
 	return &BitField{rle: rle}, nil
 }
 
-type runsIterator struct {
-	runs []rlepluslazy.Run
-	i    int
-}
-
-func (ri *runsIterator) HasNext() bool {
-	return ri.i < len(ri.runs)
-}
-
-func (ri *runsIterator) NextRun() (rlepluslazy.Run, error) {
-	if ri.i >= len(ri.runs) {
-		return rlepluslazy.Run{}, fmt.Errorf("end of runs")
+func IntersectBitField(a, b *BitField) (*BitField, error) {
+	ar, err := a.sum()
+	if err != nil {
+		return nil, err
 	}
 
-	out := ri.runs[ri.i]
-	ri.i++
-	return out, nil
+	br, err := b.sum()
+	if err != nil {
+		return nil, err
+	}
+
+	andIter, err := rlepluslazy.And(ar, br)
+	if err != nil {
+		return nil, err
+	}
+
+	buf, err := rlepluslazy.EncodeRuns(andIter, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	rle, err := rlepluslazy.FromBuf(buf)
+	if err != nil {
+		return nil, err
+	}
+
+	return newWithRle(rle), nil
 }
