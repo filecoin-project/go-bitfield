@@ -305,3 +305,11 @@ func (bf *BitField) First() (uint64, error) {
 	}
 	return 0, fmt.Errorf("bitfield has no set bits")
 }
+
+func (bf *BitField) IsEmpty() (bool, error) {
+	c, err := bf.Count()
+	if err != nil {
+		return false, err
+	}
+	return c == 0, nil
+}
