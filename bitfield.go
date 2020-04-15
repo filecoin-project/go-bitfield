@@ -258,7 +258,7 @@ func (bf *BitField) UnmarshalCBOR(r io.Reader) error {
 }
 
 func (bf *BitField) ForEach(f func(uint64) error) error {
-	iter, err := bf.rle.RunIterator()
+	iter, err := bf.sum()
 	if err != nil {
 		return err
 	}
@@ -282,4 +282,26 @@ func (bf *BitField) ForEach(f func(uint64) error) error {
 		}
 	}
 	return nil
+}
+
+func (bf *BitField) First() (uint64, error) {
+	iter, err := bf.sum()
+	if err != nil {
+		return 0, err
+	}
+
+	var i uint64
+	for iter.HasNext() {
+		r, err := iter.NextRun()
+		if err != nil {
+			return 0, err
+		}
+
+		if r.Val {
+			return i, nil
+		} else {
+			i += r.Len
+		}
+	}
+	return 0, fmt.Errorf("bitfield has no set bits")
 }
