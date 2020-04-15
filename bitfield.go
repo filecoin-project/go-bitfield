@@ -256,3 +256,30 @@ func (bf *BitField) UnmarshalCBOR(r io.Reader) error {
 
 	return nil
 }
+
+func (bf *BitField) ForEach(f func(uint64) error) error {
+	iter, err := bf.rle.RunIterator()
+	if err != nil {
+		return err
+	}
+
+	var i uint64
+	for iter.HasNext() {
+		r, err := iter.NextRun()
+		if err != nil {
+			return err
+		}
+
+		if r.Val {
+			for j := uint64(0); j < r.Len; j++ {
+				if err := f(i); err != nil {
+					return err
+				}
+				i++
+			}
+		} else {
+			i += r.Len
+		}
+	}
+	return nil
+}
