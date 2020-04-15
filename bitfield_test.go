@@ -41,7 +41,7 @@ func TestBitfieldSlice(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	expslice := vals[500:1100]
+	expslice := vals[600:1100]
 
 	outvals, err := sl.All(10000)
 	if err != nil {
@@ -49,6 +49,8 @@ func TestBitfieldSlice(t *testing.T) {
 	}
 
 	if !slicesEqual(expslice, outvals) {
+		fmt.Println(expslice)
+		fmt.Println(outvals)
 		t.Fatal("output slice was not correct")
 	}
 }
@@ -81,9 +83,18 @@ func TestBitfieldSliceSmall(t *testing.T) {
 		}
 	}
 
-	t.Run("all", testPerm(0, 8))
-	t.Run("not first", testPerm(1, 7))
-	t.Run("last item", testPerm(7, 1))
-	t.Run("start during gap", testPerm(1, 4))
-	t.Run("start during run", testPerm(3, 4))
+	/*
+		t.Run("all", testPerm(0, 8))
+		t.Run("not first", testPerm(1, 7))
+		t.Run("last item", testPerm(7, 1))
+		t.Run("start during gap", testPerm(1, 4))
+		t.Run("start during run", testPerm(3, 4))
+		t.Run("end during run", testPerm(1, 1))
+	*/
+
+	for i := 0; i < len(vals); i++ {
+		for j := 0; j < len(vals)-i; j++ {
+			t.Run(fmt.Sprintf("comb-%d-%d", i, j), testPerm(uint64(i), uint64(j)))
+		}
+	}
 }
