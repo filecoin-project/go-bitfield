@@ -480,3 +480,32 @@ func IntersectBitField(a, b *BitField) (*BitField, error) {
 
 	return newWithRle(rle), nil
 }
+
+func SubtractBitField(a, b *BitField) (*BitField, error) {
+	ar, err := a.sum()
+	if err != nil {
+		return nil, err
+	}
+
+	br, err := b.sum()
+	if err != nil {
+		return nil, err
+	}
+
+	andIter, err := rlepluslazy.Subtract(ar, br)
+	if err != nil {
+		return nil, err
+	}
+
+	buf, err := rlepluslazy.EncodeRuns(andIter, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	rle, err := rlepluslazy.FromBuf(buf)
+	if err != nil {
+		return nil, err
+	}
+
+	return newWithRle(rle), nil
+}

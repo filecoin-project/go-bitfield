@@ -204,3 +204,32 @@ func (ri *RunSliceIterator) NextRun() (Run, error) {
 	ri.i++
 	return out, nil
 }
+
+type notIter struct {
+	it RunIterator
+}
+
+func (ni *notIter) HasNext() bool {
+	return true
+}
+
+func (ni *notIter) NextRun() (Run, error) {
+	if !ni.it.HasNext() {
+		return Run{
+			Val: true,
+			Len: 10000000000, // close enough to infinity
+		}, nil
+	}
+
+	nr, err := ni.it.NextRun()
+	if err != nil {
+		return Run{}, err
+	}
+
+	nr.Val = !nr.Val
+	return nr, nil
+}
+
+func Subtract(a, b RunIterator) (RunIterator, error) {
+	return And(a, &notIter{it: b})
+}

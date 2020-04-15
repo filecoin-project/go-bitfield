@@ -218,3 +218,52 @@ func TestBitfieldIntersect(t *testing.T) {
 		t.Fatal("intersection is wrong")
 	}
 }
+
+func setSubtract(a, b []uint64) []uint64 {
+	m := make(map[uint64]bool)
+	for _, v := range a {
+		m[v] = true
+	}
+	for _, v := range b {
+		delete(m, v)
+	}
+
+	out := make([]uint64, 0, len(m))
+	for v := range m {
+		out = append(out, v)
+	}
+
+	sort.Slice(out, func(i, j int) bool {
+		return out[i] < out[j]
+	})
+
+	return out
+}
+
+func TestBitfieldSubtract(t *testing.T) {
+	a := getRandIndexSetSeed(100, 1)
+	b := getRandIndexSetSeed(100, 2)
+
+	bfa := NewFromSet(a)
+	bfb := NewFromSet(b)
+
+	inter, err := SubtractBitField(bfa, bfb)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	out, err := inter.All(10000)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	exp := setSubtract(a, b)
+
+	if !slicesEqual(out, exp) {
+		fmt.Println(a)
+		fmt.Println(b)
+		fmt.Println(out)
+		fmt.Println(exp)
+		t.Fatal("subtraction is wrong")
+	}
+}
