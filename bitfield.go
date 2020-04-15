@@ -336,7 +336,15 @@ func (bf *BitField) ForEach(f func(uint64) error) error {
 }
 
 func (bf *BitField) IsSet(x uint64) (bool, error) {
-	iter, err := bf.sum()
+	if _, ok := bf.set[x]; ok {
+		return true, nil
+	}
+
+	if _, ok := bf.unset[x]; ok {
+		return false, nil
+	}
+
+	iter, err := bf.rle.RunIterator()
 	if err != nil {
 		return false, err
 	}
