@@ -322,3 +322,100 @@ func (bf *BitField) IsEmpty() (bool, error) {
 	}
 	return c == 0, nil
 }
+
+func (bf *BitField) Slice(start, count uint64) (*BitField, error) {
+	iter, err := bf.sum()
+	if err != nil {
+		return nil, err
+	}
+
+	valsUntilStart := start
+
+	var sliceRuns []rlepluslazy.Run
+	var i, outcount uint64
+	for iter.HasNext() && valsUntilStart > 0 {
+		r, err := iter.NextRun()
+		if err != nil {
+			return nil, err
+		}
+
+		if r.Val {
+			if r.Len <= valsUntilStart {
+				valsUntilStart -= r.Len
+				i += r.Len
+			} else {
+				i += valsUntilStart
+
+				rem := r.Len - valsUntilStart
+				if rem > count {
+					rem = count
+				}
+
+				sliceRuns = append(sliceRuns,
+					rlepluslazy.Run{Val: false, Len: i},
+					rlepluslazy.Run{Val: true, Len: rem},
+				)
+				outcount += rem
+				valsUntilStart = 0
+			}
+		} else {
+			i += r.Len
+		}
+	}
+
+	for iter.HasNext() && outcount < count {
+		r, err := iter.NextRun()
+		if err != nil {
+			return nil, err
+		}
+
+		if r.Val {
+			if r.Len <= count-outcount {
+				sliceRuns = append(sliceRuns, r)
+				outcount += r.Len
+			} else {
+				sliceRuns = append(sliceRuns, rlepluslazy.Run{Val: true, Len: count - outcount})
+				outcount = count
+			}
+		} else {
+			if len(sliceRuns) == 0 {
+				r.Len += i
+			}
+			sliceRuns = append(sliceRuns, r)
+		}
+	}
+	if outcount < count {
+		return nil, fmt.Errorf("not enough bits set in field to satisfy slice count")
+	}
+
+	buf, err := rlepluslazy.EncodeRuns(&runsIterator{runs: sliceRuns}, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	rle, err := rlepluslazy.FromBuf(buf)
+	if err != nil {
+		return nil, err
+	}
+
+	return &BitField{rle: rle}, nil
+}
+
+type runsIterator struct {
+	runs []rlepluslazy.Run
+	i    int
+}
+
+func (ri *runsIterator) HasNext() bool {
+	return ri.i < len(ri.runs)
+}
+
+func (ri *runsIterator) NextRun() (rlepluslazy.Run, error) {
+	if ri.i >= len(ri.runs) {
+		return rlepluslazy.Run{}, fmt.Errorf("end of runs")
+	}
+
+	out := ri.runs[ri.i]
+	ri.i++
+	return out, nil
+}

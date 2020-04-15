@@ -1,0 +1,89 @@
+package bitfield
+
+import (
+	"fmt"
+	"math/rand"
+	"testing"
+)
+
+func slicesEqual(a, b []uint64) bool {
+	if len(a) != len(b) {
+		return false
+	}
+
+	for i, v := range a {
+		if b[i] != v {
+			return false
+		}
+	}
+	return true
+}
+
+func getRandIndexSet(n int) []uint64 {
+	r := rand.New(rand.NewSource(55))
+
+	var items []uint64
+	for i := 0; i < n; i++ {
+		if r.Intn(3) != 0 {
+			items = append(items, uint64(i))
+		}
+	}
+	return items
+}
+
+func TestBitfieldSlice(t *testing.T) {
+	vals := getRandIndexSet(10000)
+
+	bf := NewFromSet(vals)
+
+	sl, err := bf.Slice(600, 500)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expslice := vals[500:1100]
+
+	outvals, err := sl.All(10000)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !slicesEqual(expslice, outvals) {
+		t.Fatal("output slice was not correct")
+	}
+}
+
+func TestBitfieldSliceSmall(t *testing.T) {
+	vals := []uint64{1, 5, 6, 7, 10, 11, 12, 15}
+
+	testPerm := func(start, count uint64) func(*testing.T) {
+		return func(t *testing.T) {
+
+			bf := NewFromSet(vals)
+
+			sl, err := bf.Slice(start, count)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			expslice := vals[start : start+count]
+
+			outvals, err := sl.All(10000)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if !slicesEqual(expslice, outvals) {
+				fmt.Println(expslice)
+				fmt.Println(outvals)
+				t.Fatal("output slice was not correct")
+			}
+		}
+	}
+
+	t.Run("all", testPerm(0, 8))
+	t.Run("not first", testPerm(1, 7))
+	t.Run("last item", testPerm(7, 1))
+	t.Run("start during gap", testPerm(1, 4))
+	t.Run("start during run", testPerm(3, 4))
+}
