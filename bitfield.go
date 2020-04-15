@@ -1,6 +1,7 @@
 package bitfield
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -38,6 +39,14 @@ func NewFromBytes(rle []byte) (BitField, error) {
 	bf.unset = make(map[uint64]struct{})
 	return bf, nil
 
+}
+
+func newWithRle(rle rlepluslazy.RLE) *BitField {
+	return &BitField{
+		set:   make(map[uint64]struct{}),
+		unset: make(map[uint64]struct{}),
+		rle:   rle,
+	}
 }
 
 func NewFromSet(setBits []uint64) BitField {
@@ -257,6 +266,37 @@ func (bf *BitField) UnmarshalCBOR(r io.Reader) error {
 	return nil
 }
 
+func (bf *BitField) MarshalJSON() ([]byte, error) {
+	r, err := bf.sum()
+	if err != nil {
+		return nil, err
+	}
+
+	buf, err := rlepluslazy.EncodeRuns(r, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return json.Marshal(buf)
+}
+
+func (bf *BitField) UnmarshalJSON(b []byte) error {
+	var buf []byte
+	if err := json.Unmarshal(b, &buf); err != nil {
+		return err
+	}
+
+	rle, err := rlepluslazy.FromBuf(buf)
+	if err != nil {
+		return err
+	}
+
+	bf.rle = rle
+	bf.set = make(map[uint64]struct{})
+	bf.unset = make(map[uint64]struct{})
+	return nil
+}
+
 func (bf *BitField) ForEach(f func(uint64) error) error {
 	iter, err := bf.sum()
 	if err != nil {
@@ -420,13 +460,13 @@ func (ri *runsIterator) NextRun() (rlepluslazy.Run, error) {
 	return out, nil
 }
 
-func (bf *BitField) Union(obf *BitField) (*BitField, error) {
+func (bf *BitField) Union(obf BitField) (*BitField, error) {
 	a, err := bf.rle.RunIterator()
 	if err != nil {
 		return nil, err
 	}
 
-	b, err := bf.rle.RunIterator()
+	b, err := obf.rle.RunIterator()
 	if err != nil {
 		return nil, err
 	}
@@ -446,5 +486,5 @@ func (bf *BitField) Union(obf *BitField) (*BitField, error) {
 		return nil, err
 	}
 
-	return &BitField{rle: rle}, nil
+	return newWithRle(rle), nil
 }
