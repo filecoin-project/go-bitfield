@@ -1,6 +1,7 @@
 package rlepluslazy
 
 import (
+	"fmt"
 	"math"
 
 	"golang.org/x/xerrors"
@@ -116,4 +117,119 @@ func Count(ri RunIterator) (uint64, error) {
 		}
 	}
 	return count, nil
+}
+
+func IsSet(ri RunIterator, x uint64) (bool, error) {
+	var i uint64
+	for ri.HasNext() {
+		r, err := ri.NextRun()
+		if err != nil {
+			return false, err
+		}
+
+		if i+r.Len > x {
+			return r.Val, nil
+		}
+
+		i += r.Len
+	}
+	return false, nil
+}
+
+func min(a, b uint64) uint64 {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+func And(a, b RunIterator) (RunIterator, error) {
+	var ar, br Run
+
+	var out []Run
+	for {
+		if !ar.Valid() && a.HasNext() {
+			nar, err := a.NextRun()
+			if err != nil {
+				return nil, err
+			}
+			ar = nar
+		}
+		if !br.Valid() && b.HasNext() {
+			nbr, err := b.NextRun()
+			if err != nil {
+				return nil, err
+			}
+			br = nbr
+		}
+
+		// if either run is out of bits, we're done here
+		if !ar.Valid() || !br.Valid() {
+			break
+		}
+
+		r := Run{
+			Val: ar.Val && br.Val,
+			Len: min(ar.Len, br.Len),
+		}
+
+		ar.Len -= r.Len
+		br.Len -= r.Len
+
+		if len(out) > 0 && out[len(out)-1].Val == r.Val {
+			out[len(out)-1].Len += r.Len
+		} else {
+			out = append(out, r)
+		}
+	}
+
+	return &RunSliceIterator{out, 0}, nil
+}
+
+type RunSliceIterator struct {
+	Runs []Run
+	i    int
+}
+
+func (ri *RunSliceIterator) HasNext() bool {
+	return ri.i < len(ri.Runs)
+}
+
+func (ri *RunSliceIterator) NextRun() (Run, error) {
+	if ri.i >= len(ri.Runs) {
+		return Run{}, fmt.Errorf("end of runs")
+	}
+
+	out := ri.Runs[ri.i]
+	ri.i++
+	return out, nil
+}
+
+type notIter struct {
+	it RunIterator
+}
+
+func (ni *notIter) HasNext() bool {
+	return true
+}
+
+func (ni *notIter) NextRun() (Run, error) {
+	if !ni.it.HasNext() {
+		return Run{
+			Val: true,
+			Len: 10000000000, // close enough to infinity
+		}, nil
+	}
+
+	nr, err := ni.it.NextRun()
+	if err != nil {
+		return Run{}, err
+	}
+
+	nr.Val = !nr.Val
+	return nr, nil
+}
+
+func Subtract(a, b RunIterator) (RunIterator, error) {
+	return And(a, &notIter{it: b})
 }

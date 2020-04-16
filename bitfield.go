@@ -1,6 +1,7 @@
 package bitfield
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -40,8 +41,16 @@ func NewFromBytes(rle []byte) (BitField, error) {
 
 }
 
-func NewFromSet(setBits []uint64) BitField {
-	res := BitField{
+func newWithRle(rle rlepluslazy.RLE) *BitField {
+	return &BitField{
+		set:   make(map[uint64]struct{}),
+		unset: make(map[uint64]struct{}),
+		rle:   rle,
+	}
+}
+
+func NewFromSet(setBits []uint64) *BitField {
+	res := &BitField{
 		set:   make(map[uint64]struct{}),
 		unset: make(map[uint64]struct{}),
 	}
@@ -51,36 +60,47 @@ func NewFromSet(setBits []uint64) BitField {
 	return res
 }
 
-func MergeBitFields(a, b BitField) (BitField, error) {
+func NewFromIter(r rlepluslazy.RunIterator) (*BitField, error) {
+	buf, err := rlepluslazy.EncodeRuns(r, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	rle, err := rlepluslazy.FromBuf(buf)
+	if err != nil {
+		return nil, err
+	}
+
+	return newWithRle(rle), nil
+}
+
+func MergeBitFields(a, b *BitField) (*BitField, error) {
 	ra, err := a.sum()
 	if err != nil {
-		return BitField{}, err
+		return nil, err
 	}
 
 	rb, err := b.sum()
 	if err != nil {
-		return BitField{}, err
+		return nil, err
 	}
 
 	merge, err := rlepluslazy.Or(ra, rb)
 	if err != nil {
-		return BitField{}, err
+		return nil, err
 	}
 
 	mergebytes, err := rlepluslazy.EncodeRuns(merge, nil)
 	if err != nil {
-		return BitField{}, err
+		return nil, err
 	}
 
 	rle, err := rlepluslazy.FromBuf(mergebytes)
 	if err != nil {
-		return BitField{}, err
+		return nil, err
 	}
 
-	return BitField{
-		rle: rle,
-		set: make(map[uint64]struct{}),
-	}, nil
+	return newWithRle(rle), nil
 }
 
 func (bf BitField) sum() (rlepluslazy.RunIterator, error) {
@@ -255,4 +275,245 @@ func (bf *BitField) UnmarshalCBOR(r io.Reader) error {
 	bf.set = make(map[uint64]struct{})
 
 	return nil
+}
+
+func (bf *BitField) MarshalJSON() ([]byte, error) {
+	r, err := bf.sum()
+	if err != nil {
+		return nil, err
+	}
+
+	buf, err := rlepluslazy.EncodeRuns(r, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return json.Marshal(buf)
+}
+
+func (bf *BitField) UnmarshalJSON(b []byte) error {
+	var buf []byte
+	if err := json.Unmarshal(b, &buf); err != nil {
+		return err
+	}
+
+	rle, err := rlepluslazy.FromBuf(buf)
+	if err != nil {
+		return err
+	}
+
+	bf.rle = rle
+	bf.set = make(map[uint64]struct{})
+	bf.unset = make(map[uint64]struct{})
+	return nil
+}
+
+func (bf *BitField) ForEach(f func(uint64) error) error {
+	iter, err := bf.sum()
+	if err != nil {
+		return err
+	}
+
+	var i uint64
+	for iter.HasNext() {
+		r, err := iter.NextRun()
+		if err != nil {
+			return err
+		}
+
+		if r.Val {
+			for j := uint64(0); j < r.Len; j++ {
+				if err := f(i); err != nil {
+					return err
+				}
+				i++
+			}
+		} else {
+			i += r.Len
+		}
+	}
+	return nil
+}
+
+func (bf *BitField) IsSet(x uint64) (bool, error) {
+	if _, ok := bf.set[x]; ok {
+		return true, nil
+	}
+
+	if _, ok := bf.unset[x]; ok {
+		return false, nil
+	}
+
+	iter, err := bf.rle.RunIterator()
+	if err != nil {
+		return false, err
+	}
+
+	return rlepluslazy.IsSet(iter, x)
+}
+
+func (bf *BitField) First() (uint64, error) {
+	iter, err := bf.sum()
+	if err != nil {
+		return 0, err
+	}
+
+	var i uint64
+	for iter.HasNext() {
+		r, err := iter.NextRun()
+		if err != nil {
+			return 0, err
+		}
+
+		if r.Val {
+			return i, nil
+		} else {
+			i += r.Len
+		}
+	}
+	return 0, fmt.Errorf("bitfield has no set bits")
+}
+
+func (bf *BitField) IsEmpty() (bool, error) {
+	c, err := bf.Count()
+	if err != nil {
+		return false, err
+	}
+	return c == 0, nil
+}
+
+func (bf *BitField) Slice(start, count uint64) (*BitField, error) {
+	iter, err := bf.sum()
+	if err != nil {
+		return nil, err
+	}
+
+	valsUntilStart := start
+
+	var sliceRuns []rlepluslazy.Run
+	var i, outcount uint64
+	for iter.HasNext() && valsUntilStart > 0 {
+		r, err := iter.NextRun()
+		if err != nil {
+			return nil, err
+		}
+
+		if r.Val {
+			if r.Len <= valsUntilStart {
+				valsUntilStart -= r.Len
+				i += r.Len
+			} else {
+				i += valsUntilStart
+
+				rem := r.Len - valsUntilStart
+				if rem > count {
+					rem = count
+				}
+
+				sliceRuns = append(sliceRuns,
+					rlepluslazy.Run{Val: false, Len: i},
+					rlepluslazy.Run{Val: true, Len: rem},
+				)
+				outcount += rem
+				valsUntilStart = 0
+			}
+		} else {
+			i += r.Len
+		}
+	}
+
+	for iter.HasNext() && outcount < count {
+		r, err := iter.NextRun()
+		if err != nil {
+			return nil, err
+		}
+
+		if r.Val {
+			if r.Len <= count-outcount {
+				sliceRuns = append(sliceRuns, r)
+				outcount += r.Len
+			} else {
+				sliceRuns = append(sliceRuns, rlepluslazy.Run{Val: true, Len: count - outcount})
+				outcount = count
+			}
+		} else {
+			if len(sliceRuns) == 0 {
+				r.Len += i
+			}
+			sliceRuns = append(sliceRuns, r)
+		}
+	}
+	if outcount < count {
+		return nil, fmt.Errorf("not enough bits set in field to satisfy slice count")
+	}
+
+	buf, err := rlepluslazy.EncodeRuns(&rlepluslazy.RunSliceIterator{Runs: sliceRuns}, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	rle, err := rlepluslazy.FromBuf(buf)
+	if err != nil {
+		return nil, err
+	}
+
+	return &BitField{rle: rle}, nil
+}
+
+func IntersectBitField(a, b *BitField) (*BitField, error) {
+	ar, err := a.sum()
+	if err != nil {
+		return nil, err
+	}
+
+	br, err := b.sum()
+	if err != nil {
+		return nil, err
+	}
+
+	andIter, err := rlepluslazy.And(ar, br)
+	if err != nil {
+		return nil, err
+	}
+
+	buf, err := rlepluslazy.EncodeRuns(andIter, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	rle, err := rlepluslazy.FromBuf(buf)
+	if err != nil {
+		return nil, err
+	}
+
+	return newWithRle(rle), nil
+}
+
+func SubtractBitField(a, b *BitField) (*BitField, error) {
+	ar, err := a.sum()
+	if err != nil {
+		return nil, err
+	}
+
+	br, err := b.sum()
+	if err != nil {
+		return nil, err
+	}
+
+	andIter, err := rlepluslazy.Subtract(ar, br)
+	if err != nil {
+		return nil, err
+	}
+
+	buf, err := rlepluslazy.EncodeRuns(andIter, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	rle, err := rlepluslazy.FromBuf(buf)
+	if err != nil {
+		return nil, err
+	}
+
+	return newWithRle(rle), nil
 }

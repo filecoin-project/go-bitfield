@@ -109,3 +109,22 @@ func TestOrRandom(t *testing.T) {
 		assert.Equal(t, sumbits, bis)
 	}
 }
+
+func TestIsSet(t *testing.T) {
+	set := []uint64{0, 2, 3, 4, 5, 6, 7, 8, 11, 12, 13, 14}
+	setMap := make(map[uint64]struct{})
+	for _, v := range set {
+		setMap[v] = struct{}{}
+	}
+
+	for i := uint64(0); i < 30; i++ {
+		a, err := RunsFromSlice(set)
+		assert.NoError(t, err)
+		res, err := IsSet(a, i)
+		assert.NoError(t, err)
+		_, should := setMap[i]
+		assert.Equal(t, should, res, "IsSet result missmatch at: %d", i)
+
+	}
+
+}
