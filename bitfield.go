@@ -103,6 +103,39 @@ func MergeBitFields(a, b *BitField) (*BitField, error) {
 	return newWithRle(rle), nil
 }
 
+func MultiMerge(bfs ...*BitField) (*BitField, error) {
+	iters := make([]rlepluslazy.RunIterator, 0, len(bfs))
+	for _, bf := range bfs {
+		iter, err := bf.sum()
+		if err != nil {
+			return nil, err
+		}
+		iters = append(iters, iter)
+	}
+
+	for len(iters) > 1 {
+		var next []rlepluslazy.RunIterator
+
+		for i := 0; i < len(iters); i += 2 {
+			if i+1 >= len(iters) {
+				next = append(next, iters[i])
+				continue
+			}
+
+			orit, err := rlepluslazy.Or(iters[i], iters[i+1])
+			if err != nil {
+				return nil, err
+			}
+
+			next = append(next, orit)
+		}
+
+		iters = next
+	}
+
+	return NewFromIter(iters[0])
+}
+
 func (bf BitField) sum() (rlepluslazy.RunIterator, error) {
 	if len(bf.set) == 0 && len(bf.unset) == 0 {
 		// fastpath
