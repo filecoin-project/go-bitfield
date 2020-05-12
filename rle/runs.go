@@ -59,7 +59,7 @@ func (it *addIt) prep() error {
 		return nil
 	}
 
-	if !(it.arun.Val || it.brun.Val) {
+	if !it.arun.Val && !it.brun.Val {
 		min := it.arun.Len
 		if it.brun.Len < min {
 			min = it.brun.Len
@@ -67,6 +67,20 @@ func (it *addIt) prep() error {
 		it.next = Run{Val: it.arun.Val, Len: min}
 		it.arun.Len -= it.next.Len
 		it.brun.Len -= it.next.Len
+
+		if err := fetch(); err != nil {
+			return err
+		}
+		trailingRun := func(r1, r2 Run) bool {
+			return !r1.Valid() && r2.Val == it.next.Val
+		}
+		if trailingRun(it.arun, it.brun) || trailingRun(it.brun, it.arun) {
+			it.next.Len += it.arun.Len
+			it.next.Len += it.brun.Len
+			it.arun.Len = 0
+			it.brun.Len = 0
+		}
+
 		return nil
 	}
 
@@ -183,6 +197,10 @@ func And(a, b RunIterator) (RunIterator, error) {
 		}
 	}
 
+	if len(out) == 1 && !out[0].Val {
+		out = nil
+	}
+
 	return &RunSliceIterator{out, 0}, nil
 }
 
@@ -232,4 +250,77 @@ func (ni *notIter) NextRun() (Run, error) {
 
 func Subtract(a, b RunIterator) (RunIterator, error) {
 	return And(a, &notIter{it: b})
+}
+
+type nextRun struct {
+	run Run
+	err error
+}
+
+type peekIter struct {
+	it    RunIterator
+	stash *nextRun
+}
+
+func (it *peekIter) HasNext() bool {
+	if it.stash != nil {
+		return true
+	}
+	return it.it.HasNext()
+}
+
+func (it *peekIter) NextRun() (Run, error) {
+	if it.stash != nil {
+		r := it.stash
+		it.stash = nil
+		return r.run, r.err
+	}
+
+	return it.it.NextRun()
+}
+
+func (it *peekIter) put(run Run, err error) {
+	it.stash = &nextRun{
+		run: run,
+		err: err,
+	}
+}
+
+// normIter trims the last run of 0s
+type normIter struct {
+	it *peekIter
+}
+
+func newNormIter(it RunIterator) *normIter {
+	return &normIter{
+		it: &peekIter{
+			it:    it,
+			stash: nil,
+		},
+	}
+}
+
+func (it *normIter) HasNext() bool {
+	if !it.it.HasNext() {
+		return false
+	}
+
+	// check if this is the last run
+	cur, err := it.it.NextRun()
+	if err != nil {
+		it.it.put(cur, err)
+		return true
+	}
+
+	notLast := it.it.HasNext()
+	it.it.put(cur, err)
+	if notLast {
+		return true
+	}
+
+	return cur.Val
+}
+
+func (it *normIter) NextRun() (Run, error) {
+	return it.it.NextRun()
 }

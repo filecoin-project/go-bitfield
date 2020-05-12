@@ -5,6 +5,8 @@ import (
 	"math/rand"
 	"sort"
 	"testing"
+
+	rlepluslazy "github.com/filecoin-project/go-bitfield/rle"
 )
 
 func slicesEqual(a, b []uint64) bool {
@@ -240,6 +242,84 @@ func setSubtract(a, b []uint64) []uint64 {
 	return out
 }
 
+func TestBitfieldOrDifferentLenZeroSuffix(t *testing.T) {
+	ra := &rlepluslazy.RunSliceIterator{
+		Runs: []rlepluslazy.Run{
+			{Val: false, Len: 5},
+		},
+	}
+
+	rb := &rlepluslazy.RunSliceIterator{
+		Runs: []rlepluslazy.Run{
+			{Val: false, Len: 8},
+		},
+	}
+
+	merge, err := rlepluslazy.Or(ra, rb)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	mergebytes, err := rlepluslazy.EncodeRuns(merge, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	b, err := NewFromBytes(mergebytes)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	c, err := b.Count()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if c != 0 {
+		t.Error("expected 0 set bits", c)
+	}
+}
+
+func TestBitfieldSubDifferentLenZeroSuffix(t *testing.T) {
+	ra := &rlepluslazy.RunSliceIterator{
+		Runs: []rlepluslazy.Run{
+			{Val: true, Len: 5},
+			{Val: false, Len: 5},
+		},
+	}
+
+	rb := &rlepluslazy.RunSliceIterator{
+		Runs: []rlepluslazy.Run{
+			{Val: true, Len: 5},
+			{Val: false, Len: 8},
+		},
+	}
+
+	merge, err := rlepluslazy.Subtract(ra, rb)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	mergebytes, err := rlepluslazy.EncodeRuns(merge, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	b, err := NewFromBytes(mergebytes)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	c, err := b.Count()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if c != 0 {
+		t.Error("expected 0 set bits", c)
+	}
+}
+
 func TestBitfieldSubtract(t *testing.T) {
 	a := getRandIndexSetSeed(100, 1)
 	b := getRandIndexSetSeed(100, 2)
@@ -265,5 +345,63 @@ func TestBitfieldSubtract(t *testing.T) {
 		fmt.Println(out)
 		fmt.Println(exp)
 		t.Fatal("subtraction is wrong")
+	}
+}
+
+// <specs-actors>
+func BitFieldUnion(bfs ...*BitField) (*BitField, error) {
+	// TODO: optimize me
+	for len(bfs) > 1 {
+		var next []*BitField
+		for i := 0; i < len(bfs); i += 2 {
+			if i+1 >= len(bfs) {
+				next = append(next, bfs[i])
+				break
+			}
+			merged, err := MergeBitFields(bfs[i], bfs[i+1])
+			if err != nil {
+				return nil, err
+			}
+
+			next = append(next, merged)
+		}
+		bfs = next
+	}
+	return bfs[0], nil
+}
+
+// </specs-actors>
+func TestBitfieldSubtractMore(t *testing.T) {
+	have := NewFromSet([]uint64{5, 6, 8, 10, 11, 13, 14, 17})
+	s1, err := SubtractBitField(NewFromSet([]uint64{5, 6}), have)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s2, err := SubtractBitField(NewFromSet([]uint64{8, 10}), have)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s3, err := SubtractBitField(NewFromSet([]uint64{11, 13}), have)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s4, err := SubtractBitField(NewFromSet([]uint64{14, 17}), have)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	u, err := BitFieldUnion(s1, s2, s3, s4)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	c, err := u.Count()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c != 0 {
+		ua, err := u.All(500)
+		fmt.Printf("%s %+v", err, ua)
+		t.Error("expected 0", c)
 	}
 }
