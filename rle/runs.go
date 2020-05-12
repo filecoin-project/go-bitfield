@@ -8,7 +8,7 @@ import (
 )
 
 func Or(a, b RunIterator) (RunIterator, error) {
-	it := addIt{a: a, b: b}
+	it := addIt{a: newNormIter(a), b: newNormIter(b)}
 	return &it, it.prep()
 }
 
@@ -236,4 +236,77 @@ func (ni *notIter) NextRun() (Run, error) {
 
 func Subtract(a, b RunIterator) (RunIterator, error) {
 	return And(a, &notIter{it: b})
+}
+
+type nextRun struct {
+	run Run
+	err error
+}
+
+type peekIter struct {
+	it    RunIterator
+	stash *nextRun
+}
+
+func (it *peekIter) HasNext() bool {
+	if it.stash != nil {
+		return true
+	}
+	return it.it.HasNext()
+}
+
+func (it *peekIter) NextRun() (Run, error) {
+	if it.stash != nil {
+		r := it.stash
+		it.stash = nil
+		return r.run, r.err
+	}
+
+	return it.it.NextRun()
+}
+
+func (it *peekIter) put(run Run, err error) {
+	it.stash = &nextRun{
+		run: run,
+		err: err,
+	}
+}
+
+// normIter trims the last run of 0s
+type normIter struct {
+	it *peekIter
+}
+
+func newNormIter(it RunIterator) *normIter {
+	return &normIter{
+		it: &peekIter{
+			it:    it,
+			stash: nil,
+		},
+	}
+}
+
+func (it *normIter) HasNext() bool {
+	if !it.it.HasNext() {
+		return false
+	}
+
+	// check if this is the last run
+	cur, err := it.it.NextRun()
+	if err != nil {
+		it.it.put(cur, err)
+		return true
+	}
+
+	notLast := it.it.HasNext()
+	it.it.put(cur, err)
+	if notLast {
+		return true
+	}
+
+	return cur.Val
+}
+
+func (it *normIter) NextRun() (Run, error) {
+	return it.it.NextRun()
 }

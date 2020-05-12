@@ -5,6 +5,8 @@ import (
 	"math/rand"
 	"sort"
 	"testing"
+
+	rlepluslazy "github.com/filecoin-project/go-bitfield/rle"
 )
 
 func slicesEqual(a, b []uint64) bool {
@@ -240,6 +242,44 @@ func setSubtract(a, b []uint64) []uint64 {
 	return out
 }
 
+func TestBitfieldOrDifferentLenZeroSuffix(t *testing.T) {
+	ra := &rlepluslazy.RunSliceIterator{
+		Runs: []rlepluslazy.Run{
+			{Val: false, Len: 5},
+		},
+	}
+
+	rb := &rlepluslazy.RunSliceIterator{
+		Runs: []rlepluslazy.Run{
+			{Val: false, Len: 8},
+		},
+	}
+
+	merge, err := rlepluslazy.Or(ra, rb)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	mergebytes, err := rlepluslazy.EncodeRuns(merge, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	b, err := NewFromBytes(mergebytes)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	c, err := b.Count()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if c != 0 {
+		t.Error("expected 0 set bits", c)
+	}
+}
+
 func TestBitfieldSubtract(t *testing.T) {
 	a := getRandIndexSetSeed(100, 1)
 	b := getRandIndexSetSeed(100, 2)
@@ -267,7 +307,6 @@ func TestBitfieldSubtract(t *testing.T) {
 		t.Fatal("subtraction is wrong")
 	}
 }
-
 
 // <specs-actors>
 func BitFieldUnion(bfs ...*BitField) (*BitField, error) {

@@ -103,12 +103,11 @@ func TestGoldenLoop(t *testing.T) {
 	assert.Equal(t, goldenRLE, buf)
 }
 
-
 func TestEncodeConsecutiveFails(t *testing.T) {
 	ra := &RunSliceIterator{
 		Runs: []Run{
-			{Val: false, Len: 5},
-			{Val: false, Len: 8},
+			{Val: true, Len: 5},
+			{Val: true, Len: 8},
 		},
 	}
 
@@ -117,7 +116,6 @@ func TestEncodeConsecutiveFails(t *testing.T) {
 		t.Fatal("expected ErrSameValRuns")
 	}
 }
-
 
 var Res uint64 = 0
 
