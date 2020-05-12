@@ -183,6 +183,10 @@ func And(a, b RunIterator) (RunIterator, error) {
 		}
 	}
 
+	if len(out) == 1 && !out[0].Val {
+		out = nil
+	}
+
 	return &RunSliceIterator{out, 0}, nil
 }
 
