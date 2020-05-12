@@ -280,6 +280,46 @@ func TestBitfieldOrDifferentLenZeroSuffix(t *testing.T) {
 	}
 }
 
+func TestBitfieldSubDifferentLenZeroSuffix(t *testing.T) {
+	ra := &rlepluslazy.RunSliceIterator{
+		Runs: []rlepluslazy.Run{
+			{Val: true, Len: 5},
+			{Val: false, Len: 5},
+		},
+	}
+
+	rb := &rlepluslazy.RunSliceIterator{
+		Runs: []rlepluslazy.Run{
+			{Val: true, Len: 5},
+			{Val: false, Len: 8},
+		},
+	}
+
+	merge, err := rlepluslazy.Subtract(ra, rb)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	mergebytes, err := rlepluslazy.EncodeRuns(merge, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	b, err := NewFromBytes(mergebytes)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	c, err := b.Count()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if c != 0 {
+		t.Error("expected 0 set bits", c)
+	}
+}
+
 func TestBitfieldSubtract(t *testing.T) {
 	a := getRandIndexSetSeed(100, 1)
 	b := getRandIndexSetSeed(100, 2)

@@ -8,7 +8,7 @@ import (
 )
 
 func Or(a, b RunIterator) (RunIterator, error) {
-	it := addIt{a: newNormIter(a), b: newNormIter(b)}
+	it := addIt{a: a, b: b}
 	return &it, it.prep()
 }
 
@@ -59,7 +59,7 @@ func (it *addIt) prep() error {
 		return nil
 	}
 
-	if !(it.arun.Val || it.brun.Val) {
+	if !it.arun.Val && !it.brun.Val {
 		min := it.arun.Len
 		if it.brun.Len < min {
 			min = it.brun.Len
@@ -67,6 +67,20 @@ func (it *addIt) prep() error {
 		it.next = Run{Val: it.arun.Val, Len: min}
 		it.arun.Len -= it.next.Len
 		it.brun.Len -= it.next.Len
+
+		if err := fetch(); err != nil {
+			return err
+		}
+		trailingRun := func(r1, r2 Run) bool {
+			return !r1.Valid() && r2.Val == it.next.Val
+		}
+		if trailingRun(it.arun, it.brun) || trailingRun(it.brun, it.arun) {
+			it.next.Len += it.arun.Len
+			it.next.Len += it.brun.Len
+			it.arun.Len = 0
+			it.brun.Len = 0
+		}
+
 		return nil
 	}
 
