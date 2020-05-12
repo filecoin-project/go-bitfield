@@ -268,6 +268,7 @@ func TestBitfieldSubtract(t *testing.T) {
 	}
 }
 
+
 // <specs-actors>
 func BitFieldUnion(bfs ...*BitField) (*BitField, error) {
 	// TODO: optimize me

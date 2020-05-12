@@ -2,7 +2,10 @@ package rlepluslazy
 
 import (
 	"encoding/binary"
+	"errors"
 )
+
+var ErrSameValRuns = errors.New("2 consecutive runs with the same value")
 
 func EncodeRuns(rit RunIterator, buf []byte) ([]byte, error) {
 	bv := writeBitvec(buf)
@@ -10,6 +13,7 @@ func EncodeRuns(rit RunIterator, buf []byte) ([]byte, error) {
 
 	first := true
 	varBuf := make([]byte, binary.MaxVarintLen64)
+	prev := false
 
 	for rit.HasNext() {
 		run, err := rit.NextRun()
@@ -23,7 +27,13 @@ func EncodeRuns(rit RunIterator, buf []byte) ([]byte, error) {
 			} else {
 				bv.Put(0, 1)
 			}
+			prev = run.Val
 			first = false
+		} else {
+			if prev == run.Val {
+				return nil, ErrSameValRuns
+			}
+			prev = run.Val
 		}
 
 		switch {
