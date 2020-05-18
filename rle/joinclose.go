@@ -2,7 +2,7 @@ package rlepluslazy
 
 func JoinClose(it RunIterator, closeness uint64) (RunIterator, error) {
 	jc := &jcIt{
-		it:        peekIter{it: it},
+		it:        &peekIter{it: it},
 		closeness: closeness,
 	}
 	if err := jc.prep(); err != nil {
@@ -12,7 +12,7 @@ func JoinClose(it RunIterator, closeness uint64) (RunIterator, error) {
 }
 
 type jcIt struct {
-	it  peekIter
+	it  *peekIter
 	run Run
 
 	closeness uint64
