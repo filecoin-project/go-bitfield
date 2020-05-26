@@ -15,7 +15,8 @@ var (
 )
 
 type RLE struct {
-	buf []byte
+	buf  []byte
+	runs []Run
 }
 
 func FromBuf(buf []byte) (RLE, error) {
@@ -34,8 +35,21 @@ func FromBuf(buf []byte) (RLE, error) {
 }
 
 func (rle *RLE) RunIterator() (RunIterator, error) {
-	source, err := DecodeRLE(rle.buf)
-	return source, err
+	if rle.runs == nil {
+		source, err := DecodeRLE(rle.buf)
+		if err != nil {
+			return nil, xerrors.Errorf("decoding RLE: %w", err)
+		}
+		for source.HasNext() {
+			r, err := source.NextRun()
+			if err != nil {
+				return nil, xerrors.Errorf("reading run: %w", err)
+			}
+			rle.runs = append(rle.runs, r)
+		}
+	}
+
+	return &RunSliceIterator{Runs: rle.runs}, nil
 }
 
 func (rle *RLE) Count() (uint64, error) {
