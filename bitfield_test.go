@@ -153,6 +153,42 @@ func TestBitfieldUnion(t *testing.T) {
 	}
 }
 
+func multiUnionArrs(arrs [][]uint64) []uint64 {
+	base := arrs[0]
+	for i := 1; i < len(arrs); i++ {
+		base = unionArrs(base, arrs[i])
+	}
+	return base
+}
+
+func TestBitfieldMultiUnion(t *testing.T) {
+	var sets [][]uint64
+	var bfs []*BitField
+	for i := 0; i < 15; i++ {
+		s := getRandIndexSetSeed(10000, 1)
+		sets = append(sets, s)
+		bfs = append(bfs, NewFromSet(s))
+	}
+
+	bfu, err := MultiMerge(bfs...)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	out, err := bfu.All(100000)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	exp := multiUnionArrs(sets)
+
+	if !slicesEqual(out, exp) {
+		fmt.Println(out)
+		fmt.Println(exp)
+		t.Fatal("union was wrong")
+	}
+}
+
 func TestBitfieldJson(t *testing.T) {
 	vals := getRandIndexSet(100000)
 
