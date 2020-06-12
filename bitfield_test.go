@@ -441,3 +441,25 @@ func TestBitfieldSubtractMore(t *testing.T) {
 		t.Error("expected 0", c)
 	}
 }
+
+func TestBitfieldCopy(t *testing.T) {
+	start := []uint64{5, 6, 8, 10, 11, 13, 14, 17}
+
+	orig := NewFromSet(start)
+
+	cp, err := orig.Copy()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cp.Unset(10)
+
+	s, err := orig.IsSet(10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !s {
+		t.Fatal("mutation affected original bitfield")
+	}
+
+}
