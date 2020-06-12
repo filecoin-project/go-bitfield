@@ -550,3 +550,24 @@ func SubtractBitField(a, b *BitField) (*BitField, error) {
 
 	return newWithRle(rle), nil
 }
+
+// Copy flushes the bitfield and returns a copy that can be mutated
+// without changing the original values
+func (bf *BitField) Copy() (*BitField, error) {
+	r, err := bf.sum()
+	if err != nil {
+		return nil, err
+	}
+
+	buf, err := rlepluslazy.EncodeRuns(r, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	rle, err := rlepluslazy.FromBuf(buf)
+	if err != nil {
+		return nil, err
+	}
+
+	return newWithRle(rle), nil
+}
