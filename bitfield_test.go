@@ -1,6 +1,7 @@
 package bitfield
 
 import (
+	"encoding/json"
 	"fmt"
 	"math/rand"
 	"sort"
@@ -190,6 +191,28 @@ func TestBitfieldMultiUnion(t *testing.T) {
 }
 
 func TestBitfieldJson(t *testing.T) {
+	vals := []uint64{1, 5, 6, 7, 10, 11, 12, 15}
+
+	bf := NewFromSet(vals)
+
+	b, err := bf.MarshalJSON()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var buf []uint64
+	if err := json.Unmarshal(b, &buf); err != nil {
+		t.Fatal(err)
+	}
+
+	// (0) (1) (2, 3, 4), (5, 6, 7), (8, 9), (10, 11, 12), (13, 14), 15
+	runs := []uint64{1, 1, 3, 3, 2, 3, 2, 1}
+	if !slicesEqual(runs, buf) {
+		t.Fatal("runs not encoded correctly")
+	}
+}
+
+func TestBitfieldJsonRoundTrip(t *testing.T) {
 	vals := getRandIndexSet(100000)
 
 	bf := NewFromSet(vals)

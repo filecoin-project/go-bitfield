@@ -1,7 +1,6 @@
 package bitfield
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -311,31 +310,21 @@ func (bf *BitField) UnmarshalCBOR(r io.Reader) error {
 }
 
 func (bf *BitField) MarshalJSON() ([]byte, error) {
-	r, err := bf.sum()
+
+	c, err := bf.Copy()
 	if err != nil {
 		return nil, err
 	}
 
-	buf, err := rlepluslazy.EncodeRuns(r, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return json.Marshal(buf)
+	return c.rle.MarshalJSON()
 }
 
 func (bf *BitField) UnmarshalJSON(b []byte) error {
-	var buf []byte
-	if err := json.Unmarshal(b, &buf); err != nil {
-		return err
-	}
 
-	rle, err := rlepluslazy.FromBuf(buf)
+	err := bf.rle.UnmarshalJSON(b)
 	if err != nil {
 		return err
 	}
-
-	bf.rle = rle
 	bf.set = make(map[uint64]struct{})
 	bf.unset = make(map[uint64]struct{})
 	return nil
