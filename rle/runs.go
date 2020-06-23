@@ -116,6 +116,7 @@ func (it *addIt) NextRun() (Run, error) {
 }
 
 func Count(ri RunIterator) (uint64, error) {
+	var length uint64
 	var count uint64
 
 	for ri.HasNext() {
@@ -123,10 +124,13 @@ func Count(ri RunIterator) (uint64, error) {
 		if err != nil {
 			return 0, err
 		}
+
+		if math.MaxUint64-r.Len < length {
+			return 0, xerrors.New("RLE+ overflows")
+		}
+		length += r.Len
+
 		if r.Val {
-			if math.MaxUint64-r.Len < count {
-				return 0, xerrors.New("RLE+ overflows")
-			}
 			count += r.Len
 		}
 	}
