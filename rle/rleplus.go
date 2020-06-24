@@ -1,6 +1,7 @@
 package rlepluslazy
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -58,4 +59,62 @@ func (rle *RLE) Count() (uint64, error) {
 		return 0, err
 	}
 	return Count(it)
+}
+
+// Encoded as an array of run-lengths, always starting with zeroes (absent values)
+// E.g.: The set {0, 1, 2, 8, 9} is the bitfield 1110000011, and would be marshalled as [0, 3, 5, 2]
+func (rle *RLE) MarshalJSON() ([]byte, error) {
+	r, err := rle.RunIterator()
+	if err != nil {
+		return nil, err
+	}
+
+	var ret []uint64
+	if r.HasNext() {
+		first, err := r.NextRun()
+		if err != nil {
+			return nil, err
+		}
+		if first.Val {
+			ret = append(ret, 0)
+		}
+		ret = append(ret, first.Len)
+
+		for r.HasNext() {
+			next, err := r.NextRun()
+			if err != nil {
+				return nil, err
+			}
+
+			ret = append(ret, next.Len)
+		}
+	}
+
+	return json.Marshal(ret)
+}
+
+func (rle *RLE) UnmarshalJSON(b []byte) error {
+	var buf []uint64
+
+	if err := json.Unmarshal(b, &buf); err != nil {
+		return err
+	}
+
+	rle.runs = []Run{}
+	val := false
+	for i, v := range buf {
+		if v == 0 {
+			if i != 0 {
+				return xerrors.New("Cannot have a zero-length run except at start")
+			}
+		} else {
+			rle.runs = append(rle.runs, Run{
+				Val: val,
+				Len: v,
+			})
+		}
+		val = !val
+	}
+
+	return nil
 }
