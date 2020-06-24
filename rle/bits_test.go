@@ -7,7 +7,7 @@ import (
 )
 
 func TestRunsFromBits(t *testing.T) {
-	expected := []Run{Run{Val: false, Len: 0x1},
+	expected := []Run{{Val: false, Len: 0x1},
 		{Val: true, Len: 0x3},
 		{Val: false, Len: 0x2},
 		{Val: true, Len: 0x3},
