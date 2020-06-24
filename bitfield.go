@@ -50,7 +50,7 @@ func newWithRle(rle rlepluslazy.RLE) *BitField {
 
 func NewFromSet(setBits []uint64) *BitField {
 	res := &BitField{
-		set:   make(map[uint64]struct{}),
+		set:   make(map[uint64]struct{}, len(setBits)),
 		unset: make(map[uint64]struct{}),
 	}
 	for _, b := range setBits {
@@ -244,7 +244,7 @@ func (bf BitField) AllMap(max uint64) (map[uint64]bool, error) {
 		return nil, err
 	}
 
-	out := make(map[uint64]bool)
+	out := make(map[uint64]bool, len(res))
 	for _, i := range res {
 		out[i] = true
 	}
