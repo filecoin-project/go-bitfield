@@ -10,7 +10,10 @@ import (
 	"golang.org/x/xerrors"
 )
 
-var ErrBitFieldTooMany = errors.New("to many items in RLE")
+var (
+	ErrBitFieldTooMany = errors.New("to many items in RLE")
+	ErrNoBitsSet       = errors.New("bitfield has no set bits")
+)
 
 type BitField struct {
 	rle rlepluslazy.RLE
@@ -435,7 +438,8 @@ func (bf *BitField) IsSet(x uint64) (bool, error) {
 	return rlepluslazy.IsSet(iter, x)
 }
 
-// First returns the index of the first set bit.
+// First returns the index of the first set bit. This function returns
+// ErrNoBitsSet when no bits have been set.
 //
 // This operation's runtime is O(1).
 func (bf *BitField) First() (uint64, error) {
@@ -457,7 +461,7 @@ func (bf *BitField) First() (uint64, error) {
 			i += r.Len
 		}
 	}
-	return 0, fmt.Errorf("bitfield has no set bits")
+	return 0, ErrNoBitsSet
 }
 
 // IsEmpty returns true if the bitset is empty.
