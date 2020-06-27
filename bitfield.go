@@ -462,13 +462,17 @@ func (bf *BitField) First() (uint64, error) {
 
 // IsEmpty returns true if the bitset is empty.
 //
-// This operation's runtime is O(bits).
+// This operation's runtime is O(1).
 func (bf *BitField) IsEmpty() (bool, error) {
-	c, err := bf.Count()
-	if err != nil {
+	_, err := bf.First()
+	switch err {
+	case ErrNoBitsSet:
+		return true, nil
+	case nil:
+		return false, nil
+	default:
 		return false, err
 	}
-	return c == 0, nil
 }
 
 // Slice treats the BitField as an ordered set of set bits, then slices this set.
