@@ -162,50 +162,42 @@ func MultiMerge(bfs ...*BitField) (*BitField, error) {
 }
 
 func (bf BitField) sum() (rlepluslazy.RunIterator, error) {
-	if len(bf.set) == 0 && len(bf.unset) == 0 {
-		// fastpath
-		return bf.rle.RunIterator()
-	}
-
-	a, err := bf.rle.RunIterator()
+	iter, err := bf.rle.RunIterator()
 	if err != nil {
 		return nil, err
 	}
-	slc := make([]uint64, 0, len(bf.set))
-	for b := range bf.set {
-		slc = append(slc, b)
-	}
-
-	b, err := rlepluslazy.RunsFromSlice(slc)
-	if err != nil {
-		return nil, err
-	}
-
-	or, err := rlepluslazy.Or(a, b)
-	if err != nil {
-		return nil, err
-	}
-	if len(bf.unset) == 0 {
-		return or, nil
-	}
-
-	bits, err := rlepluslazy.SliceFromRuns(or)
-	if err != nil {
-		return nil, err
-	}
-	// TODO: streaming impl
-	out := make([]uint64, 0, len(bits))
-	for _, bit := range bits {
-		if _, un := bf.unset[bit]; !un {
-			out = append(out, bit)
+	if len(bf.set) > 0 {
+		slc := make([]uint64, 0, len(bf.set))
+		for b := range bf.set {
+			slc = append(slc, b)
 		}
+		set, err := rlepluslazy.RunsFromSlice(slc)
+		if err != nil {
+			return nil, err
+		}
+		newIter, err := rlepluslazy.Or(iter, set)
+		if err != nil {
+			return nil, err
+		}
+		iter = newIter
 	}
+	if len(bf.unset) > 0 {
+		slc := make([]uint64, 0, len(bf.unset))
+		for b := range bf.unset {
+			slc = append(slc, b)
+		}
 
-	res, err := rlepluslazy.RunsFromSlice(out)
-	if err != nil {
-		return nil, err
+		unset, err := rlepluslazy.RunsFromSlice(slc)
+		if err != nil {
+			return nil, err
+		}
+		newIter, err := rlepluslazy.Subtract(iter, unset)
+		if err != nil {
+			return nil, err
+		}
+		iter = newIter
 	}
-	return res, nil
+	return iter, nil
 }
 
 // Set sets the given bit in the BitField
