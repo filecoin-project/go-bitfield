@@ -161,7 +161,7 @@ func MultiMerge(bfs ...*BitField) (*BitField, error) {
 	return NewFromIter(iters[0])
 }
 
-func (bf BitField) sum() (rlepluslazy.RunIterator, error) {
+func (bf *BitField) sum() (rlepluslazy.RunIterator, error) {
 	iter, err := bf.rle.RunIterator()
 	if err != nil {
 		return nil, err
@@ -204,7 +204,7 @@ func (bf BitField) sum() (rlepluslazy.RunIterator, error) {
 //
 // This operation's runtime is O(1) up-front. However, it adds an O(bits
 // explicitly set) cost to all other operations.
-func (bf BitField) Set(bit uint64) {
+func (bf *BitField) Set(bit uint64) {
 	delete(bf.unset, bit)
 	bf.set[bit] = struct{}{}
 }
@@ -213,7 +213,7 @@ func (bf BitField) Set(bit uint64) {
 //
 // This operation's runtime is O(1). However, it adds an O(bits
 // explicitly unset) cost to all other operations.
-func (bf BitField) Unset(bit uint64) {
+func (bf *BitField) Unset(bit uint64) {
 	delete(bf.set, bit)
 	bf.unset[bit] = struct{}{}
 }
@@ -227,7 +227,7 @@ func (bf BitField) Unset(bit uint64) {
 // Count() will return 3.
 //
 // This operation's runtime is O(number of runs).
-func (bf BitField) Count() (uint64, error) {
+func (bf *BitField) Count() (uint64, error) {
 	s, err := bf.sum()
 	if err != nil {
 		return 0, err
@@ -246,7 +246,7 @@ func (bf BitField) Count() (uint64, error) {
 //     []uint64{0, 3}
 //
 // This operation's runtime is O(number of bits).
-func (bf BitField) All(max uint64) ([]uint64, error) {
+func (bf *BitField) All(max uint64) ([]uint64, error) {
 	c, err := bf.Count()
 	if err != nil {
 		return nil, xerrors.Errorf("count errror: %w", err)
@@ -279,7 +279,7 @@ func (bf BitField) All(max uint64) ([]uint64, error) {
 //     map[uint64]bool{0: true, 3: true}
 //
 // This operation's runtime is O(number of bits).
-func (bf BitField) AllMap(max uint64) (map[uint64]bool, error) {
+func (bf *BitField) AllMap(max uint64) (map[uint64]bool, error) {
 	c, err := bf.Count()
 	if err != nil {
 		return nil, xerrors.Errorf("count errror: %w", err)
