@@ -305,6 +305,7 @@ func (bf *BitField) UnmarshalCBOR(r io.Reader) error {
 	}
 	bf.rle = rle
 	bf.set = make(map[uint64]struct{})
+	bf.unset = make(map[uint64]struct{})
 
 	return nil
 }
