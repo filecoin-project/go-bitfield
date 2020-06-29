@@ -212,6 +212,40 @@ func TestBitfieldJson(t *testing.T) {
 	}
 }
 
+func TestEmptyBitfieldJson(t *testing.T) {
+	type ct struct {
+		B *BitField
+	}
+
+	ebf := New()
+	s := &ct{
+		B: &ebf,
+	}
+
+	b, err := json.Marshal(s)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var u ct
+	if err := json.Unmarshal(b, &u); err != nil {
+		t.Fatal(err)
+	}
+
+	if u.B == nil {
+		t.Fatal("u.B is nil", string(b))
+	}
+
+	set, err := u.B.Count()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if set > 0 {
+		t.Errorf("expected 0 bits to be set")
+	}
+}
+
 func TestBitfieldJsonRoundTrip(t *testing.T) {
 	vals := getRandIndexSet(100000)
 
