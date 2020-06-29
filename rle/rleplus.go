@@ -88,6 +88,8 @@ func (rle *RLE) MarshalJSON() ([]byte, error) {
 
 			ret = append(ret, next.Len)
 		}
+	} else {
+		ret = []uint64{0}
 	}
 
 	return json.Marshal(ret)
