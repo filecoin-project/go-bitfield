@@ -157,51 +157,64 @@ func min(a, b uint64) uint64 {
 	return b
 }
 
-func And(a, b RunIterator) (RunIterator, error) {
-	var ar, br Run
+type andIter struct {
+	a, b   RunIterator
+	ar, br Run
+}
 
-	var out []Run
+func (ai *andIter) HasNext() bool {
+	return (ai.ar.Valid() || ai.a.HasNext()) && (ai.br.Valid() || ai.b.HasNext())
+}
+
+func (ai *andIter) NextRun() (run Run, err error) {
 	for {
-		if !ar.Valid() && a.HasNext() {
-			nar, err := a.NextRun()
-			if err != nil {
-				return nil, err
+		// Ensure we have two valid runs.
+		if !ai.ar.Valid() {
+			if !ai.a.HasNext() {
+				break
 			}
-			ar = nar
-		}
-		if !br.Valid() && b.HasNext() {
-			nbr, err := b.NextRun()
+			ai.ar, err = ai.a.NextRun()
 			if err != nil {
-				return nil, err
+				return Run{}, err
 			}
-			br = nbr
 		}
 
-		// if either run is out of bits, we're done here
-		if !ar.Valid() || !br.Valid() {
-			break
+		if !ai.br.Valid() {
+			if !ai.b.HasNext() {
+				break
+			}
+			ai.br, err = ai.b.NextRun()
+			if err != nil {
+				return Run{}, err
+			}
 		}
 
-		r := Run{
-			Val: ar.Val && br.Val,
-			Len: min(ar.Len, br.Len),
+		// &&
+		newVal := ai.ar.Val && ai.br.Val
+
+		// Check to see if we have an ongoing run and if we've changed
+		// value.
+		if run.Len > 0 && run.Val != newVal {
+			return run, nil
 		}
 
-		ar.Len -= r.Len
-		br.Len -= r.Len
+		newLen := min(ai.ar.Len, ai.br.Len)
 
-		if len(out) > 0 && out[len(out)-1].Val == r.Val {
-			out[len(out)-1].Len += r.Len
-		} else {
-			out = append(out, r)
-		}
+		run.Val = newVal
+		run.Len += newLen
+		ai.ar.Len -= newLen
+		ai.br.Len -= newLen
 	}
 
-	if len(out) == 1 && !out[0].Val {
-		out = nil
+	if run.Valid() {
+		return run, nil
 	}
 
-	return &RunSliceIterator{out, 0}, nil
+	return Run{}, fmt.Errorf("end of runs")
+}
+
+func And(a, b RunIterator) (RunIterator, error) {
+	return &andIter{a: a, b: b}, nil
 }
 
 type RunSliceIterator struct {
