@@ -298,6 +298,9 @@ type normIter struct {
 }
 
 func newNormIter(it RunIterator) *normIter {
+	if nit, ok := it.(*normIter); ok {
+		return nit
+	}
 	return &normIter{
 		it: &peekIter{
 			it:    it,
