@@ -19,6 +19,7 @@ type BitField struct {
 	unset map[uint64]struct{}
 }
 
+// New constructs a new BitField.
 func New() BitField {
 	bf, err := NewFromBytes([]byte{})
 	if err != nil {
@@ -27,6 +28,7 @@ func New() BitField {
 	return bf
 }
 
+// NewFromBytes deserializes the encoded bitfield.
 func NewFromBytes(rle []byte) (BitField, error) {
 	bf := BitField{}
 	rlep, err := rlepluslazy.FromBuf(rle)
@@ -48,6 +50,7 @@ func newWithRle(rle rlepluslazy.RLE) *BitField {
 	}
 }
 
+// NewFromSet constructs a bitfield from the given set.
 func NewFromSet(setBits []uint64) *BitField {
 	res := &BitField{
 		set:   make(map[uint64]struct{}, len(setBits)),
@@ -59,6 +62,7 @@ func NewFromSet(setBits []uint64) *BitField {
 	return res
 }
 
+// NewFromIter constructs a BitField from the RunIterator.
 func NewFromIter(r rlepluslazy.RunIterator) (*BitField, error) {
 	buf, err := rlepluslazy.EncodeRuns(r, nil)
 	if err != nil {
@@ -73,6 +77,18 @@ func NewFromIter(r rlepluslazy.RunIterator) (*BitField, error) {
 	return newWithRle(rle), nil
 }
 
+// MergeBitFields returns the union of the two BitFields.
+//
+// For example, given two BitFields:
+//
+//     0 1 1 0 1
+//     1 1 0 1 0
+//
+// MergeBitFields would return
+//
+//     1 1 1 1 0
+//
+// This operation's runtime is O(number of runs).
 func MergeBitFields(a, b *BitField) (*BitField, error) {
 	ra, err := a.sum()
 	if err != nil {
@@ -102,6 +118,12 @@ func MergeBitFields(a, b *BitField) (*BitField, error) {
 	return newWithRle(rle), nil
 }
 
+// MultiMerge returns the unions of all the passed BitFields.
+//
+// Calling MultiMerge is identical to calling MergeBitFields repeatedly, just
+// more efficient when merging more than two BitFields.
+//
+// This operation's runtime is O(number of runs * number of bitfields).
 func MultiMerge(bfs ...*BitField) (*BitField, error) {
 	if len(bfs) == 0 {
 		return NewFromSet(nil), nil
@@ -186,18 +208,33 @@ func (bf BitField) sum() (rlepluslazy.RunIterator, error) {
 	return res, nil
 }
 
-// Set ...s bit in the BitField
+// Set sets the given bit in the BitField
+//
+// This operation's runtime is O(1) up-front. However, it adds an O(bits
+// explicitly set) cost to all other operations.
 func (bf BitField) Set(bit uint64) {
 	delete(bf.unset, bit)
 	bf.set[bit] = struct{}{}
 }
 
-// Unset ...s bit in the BitField
+// Unset unsets given bit in the BitField
+//
+// This operation's runtime is O(1). However, it adds an O(bits
+// explicitly unset) cost to all other operations.
 func (bf BitField) Unset(bit uint64) {
 	delete(bf.set, bit)
 	bf.unset[bit] = struct{}{}
 }
 
+// Count counts the non-zero bits in the bitfield.
+//
+// For example, given:
+//
+//     1 0 1 1
+//
+// Count() will return 3.
+//
+// This operation's runtime is O(number of runs).
 func (bf BitField) Count() (uint64, error) {
 	s, err := bf.sum()
 	if err != nil {
@@ -206,7 +243,17 @@ func (bf BitField) Count() (uint64, error) {
 	return rlepluslazy.Count(s)
 }
 
-// All returns all set set
+// All returns a slice of set bits in sorted order.
+//
+// For example, given:
+//
+//     1 0 0 1
+//
+// All will return:
+//
+//     []uint64{0, 3}
+//
+// This operation's runtime is O(number of bits).
 func (bf BitField) All(max uint64) ([]uint64, error) {
 	c, err := bf.Count()
 	if err != nil {
@@ -229,6 +276,17 @@ func (bf BitField) All(max uint64) ([]uint64, error) {
 	return res, nil
 }
 
+// AllMap returns a map of all set bits.
+//
+// For example, given:
+//
+//     1 0 0 1
+//
+// All will return:
+//
+//     map[uint64]bool{0: true, 3: true}
+//
+// This operation's runtime is O(number of bits).
 func (bf BitField) AllMap(max uint64) (map[uint64]bool, error) {
 	c, err := bf.Count()
 	if err != nil {
@@ -335,6 +393,9 @@ func (bf *BitField) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+// ForEach iterates over each set bit.
+//
+// This operation's runtime is O(bits set).
 func (bf *BitField) ForEach(f func(uint64) error) error {
 	iter, err := bf.sum()
 	if err != nil {
@@ -362,6 +423,9 @@ func (bf *BitField) ForEach(f func(uint64) error) error {
 	return nil
 }
 
+// IsSet returns true if the given bit is set.
+//
+// This operation's runtime is O(number of runs).
 func (bf *BitField) IsSet(x uint64) (bool, error) {
 	if _, ok := bf.set[x]; ok {
 		return true, nil
@@ -379,6 +443,9 @@ func (bf *BitField) IsSet(x uint64) (bool, error) {
 	return rlepluslazy.IsSet(iter, x)
 }
 
+// First returns the index of the first set bit.
+//
+// This operation's runtime is O(1).
 func (bf *BitField) First() (uint64, error) {
 	iter, err := bf.sum()
 	if err != nil {
@@ -401,6 +468,9 @@ func (bf *BitField) First() (uint64, error) {
 	return 0, fmt.Errorf("bitfield has no set bits")
 }
 
+// IsEmpty returns true if the bitset is empty.
+//
+// This operation's runtime is O(bits).
 func (bf *BitField) IsEmpty() (bool, error) {
 	c, err := bf.Count()
 	if err != nil {
@@ -409,6 +479,19 @@ func (bf *BitField) IsEmpty() (bool, error) {
 	return c == 0, nil
 }
 
+// Slice treats the BitField as an ordered set of set bits, then slices this set.
+//
+// That is, it skips start set bits, then returns the next count set bits.
+//
+// For example, given:
+//
+//    1 0 1 1 0 1 1
+//
+// bf.Slice(2, 2) would return:
+//
+//    0 0 0 1 0 1 0
+//
+// This operation's runtime is O(number of runs).
 func (bf *BitField) Slice(start, count uint64) (*BitField, error) {
 	iter, err := bf.sum()
 	if err != nil {
@@ -487,6 +570,18 @@ func (bf *BitField) Slice(start, count uint64) (*BitField, error) {
 	return &BitField{rle: rle}, nil
 }
 
+// IntersectBitField returns the intersection of the two BitFields.
+//
+// For example, given two BitFields:
+//
+//     0 1 1 0 1
+//     1 1 0 1 0
+//
+// IntersectBitField would return
+//
+//     0 1 0 0 0
+//
+// This operation's runtime is O(number of runs).
 func IntersectBitField(a, b *BitField) (*BitField, error) {
 	ar, err := a.sum()
 	if err != nil {
@@ -516,6 +611,19 @@ func IntersectBitField(a, b *BitField) (*BitField, error) {
 	return newWithRle(rle), nil
 }
 
+// SubtractBitField returns the difference between the two BitFields. That is,
+// it returns a bitfield of all bits set in a but not set in b.
+//
+// For example, given two BitFields:
+//
+//     0 1 1 0 1 // a
+//     1 1 0 1 0 // b
+//
+// SubtractBitFields would return
+//
+//     0 0 1 0 1
+//
+// This operation's runtime is O(number of runs).
 func SubtractBitField(a, b *BitField) (*BitField, error) {
 	ar, err := a.sum()
 	if err != nil {
