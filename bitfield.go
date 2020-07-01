@@ -141,27 +141,11 @@ func MultiMerge(bfs ...*BitField) (*BitField, error) {
 		iters = append(iters, iter)
 	}
 
-	for len(iters) > 1 {
-		var next []rlepluslazy.RunIterator
-
-		for i := 0; i < len(iters); i += 2 {
-			if i+1 >= len(iters) {
-				next = append(next, iters[i])
-				continue
-			}
-
-			orit, err := rlepluslazy.Or(iters[i], iters[i+1])
-			if err != nil {
-				return nil, err
-			}
-
-			next = append(next, orit)
-		}
-
-		iters = next
+	iter, err := rlepluslazy.Union(iters...)
+	if err != nil {
+		return nil, err
 	}
-
-	return NewFromIter(iters[0])
+	return NewFromIter(iter)
 }
 
 func (bf *BitField) RunIterator() (rlepluslazy.RunIterator, error) {
