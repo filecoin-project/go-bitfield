@@ -1,6 +1,7 @@
 package rlepluslazy
 
 import (
+	"math"
 	"math/rand"
 	"sort"
 	"testing"
@@ -126,5 +127,51 @@ func TestIsSet(t *testing.T) {
 		assert.Equal(t, should, res, "IsSet result missmatch at: %d", i)
 
 	}
+}
 
+func TestCount(t *testing.T) {
+	tests := []struct {
+		name       string
+		runs       []Run
+		count      uint64
+		shouldFail bool
+	}{
+		{
+			name:  "count-20",
+			runs:  []Run{{false, 4}, {true, 7}, {false, 10}, {true, 3}, {false, 13}, {true, 10}},
+			count: 20,
+		},
+		{
+			name: "count-2024",
+			runs: []Run{{false, 4}, {true, 1000}, {false, 10}, {true, 1000},
+				{false, 13}, {true, 24}, {false, 4}},
+			count: 2024,
+		},
+		{
+			name: "fail-set-over-max",
+			runs: []Run{{false, 4}, {true, math.MaxUint64 / 2}, {false, 10}, {true, math.MaxUint64 / 2},
+				{false, 13}, {true, 24}, {false, 4}},
+			shouldFail: true,
+		},
+		{
+			name: "length-over-max",
+			runs: []Run{{false, math.MaxUint64 / 2}, {true, 4}, {false, 10}, {true, math.MaxUint64 / 2},
+				{false, 13}, {true, 24}, {false, 4}},
+			shouldFail: true,
+		},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			runs := &RunSliceIterator{Runs: test.runs}
+			c, err := Count(runs)
+			if test.shouldFail {
+				assert.Error(t, err, "test indicated it should fail")
+			} else {
+				assert.NoError(t, err)
+				assert.EqualValues(t, test.count, c)
+			}
+		})
+	}
 }
