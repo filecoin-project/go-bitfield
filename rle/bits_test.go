@@ -25,3 +25,62 @@ func TestRunsFromBits(t *testing.T) {
 	assert.NotEqual(t, 0, i, "too many iterations")
 	assert.Equal(t, expected, output)
 }
+
+func TestNthSlice(t *testing.T) {
+	testIter(t, func(t *testing.T, bits []uint64) BitIterator {
+		iter := BitsFromSlice(bits)
+		return iter
+	})
+}
+
+func TestNthRuns(t *testing.T) {
+	testIter(t, func(t *testing.T, bits []uint64) BitIterator {
+		riter, err := RunsFromSlice(bits)
+		assert.NoError(t, err)
+		biter, err := BitsFromRuns(riter)
+		assert.NoError(t, err)
+		return biter
+	})
+}
+
+func testIter(t *testing.T, ctor func(t *testing.T, bits []uint64) BitIterator) {
+	{
+		bits := randomBits(1000, 1500)
+		iter := ctor(t, bits)
+
+		n, err := iter.Nth(10)
+		assert.NoError(t, err)
+		assert.Equal(t, bits[10], n)
+
+		n, err = iter.Nth(0)
+		assert.NoError(t, err)
+		assert.Equal(t, bits[11], n)
+
+		n, err = iter.Nth(1)
+		assert.NoError(t, err)
+		assert.Equal(t, bits[13], n)
+
+		n, err = iter.Next()
+		assert.NoError(t, err)
+		assert.Equal(t, bits[14], n)
+
+		runs, err := RunsFromBits(iter)
+		assert.NoError(t, err)
+
+		remainingBits, err := SliceFromRuns(runs)
+		assert.NoError(t, err)
+
+		assert.Equal(t, bits[15:], remainingBits)
+	}
+	{
+		bits := randomBits(1000, 1500)
+		iter := ctor(t, bits)
+
+		last, err := iter.Nth(uint64(len(bits) - 1))
+		assert.NoError(t, err)
+		assert.Equal(t, bits[len(bits)-1], last)
+		assert.False(t, iter.HasNext())
+		_, err = iter.Nth(0)
+		assert.Equal(t, ErrEndOfIterator, err)
+	}
+}

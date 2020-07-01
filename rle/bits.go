@@ -1,8 +1,11 @@
 package rlepluslazy
 
 import (
+	"errors"
 	"sort"
 )
+
+var ErrEndOfIterator = errors.New("end of iterator")
 
 type it2b struct {
 	source RunIterator
@@ -20,6 +23,24 @@ func (it *it2b) Next() (uint64, error) {
 	res := it.curIdx
 	it.curIdx++
 	return res, it.prep()
+}
+
+func (it *it2b) Nth(n uint64) (uint64, error) {
+	skip := n + 1
+	for it.run.Len < skip {
+		if !it.HasNext() {
+			return 0, ErrEndOfIterator
+		}
+		skip -= it.run.Len
+		it.curIdx += it.run.Len
+		it.run.Len = 0
+		if err := it.prep(); err != nil {
+			return 0, err
+		}
+	}
+	it.run.Len -= skip
+	it.curIdx += skip
+	return it.curIdx - 1, it.prep()
 }
 
 func (it *it2b) prep() error {
@@ -55,8 +76,21 @@ func (it sliceIt) HasNext() bool {
 }
 
 func (it *sliceIt) Next() (uint64, error) {
+	if len(it.s) == 0 {
+		return 0, ErrEndOfIterator
+	}
 	res := it.s[0]
 	it.s = it.s[1:]
+	return res, nil
+}
+
+func (it *sliceIt) Nth(n uint64) (uint64, error) {
+	if uint64(len(it.s)) <= n {
+		it.s = nil
+		return 0, ErrEndOfIterator
+	}
+	res := it.s[n]
+	it.s = it.s[n+1:]
 	return res, nil
 }
 
