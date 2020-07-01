@@ -20,5 +20,6 @@ type RunIterable interface {
 
 type BitIterator interface {
 	Next() (uint64, error)
+	Nth(n uint64) (uint64, error)
 	HasNext() bool
 }
