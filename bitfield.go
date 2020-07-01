@@ -86,7 +86,7 @@ func NewFromIter(r rlepluslazy.RunIterator) (*BitField, error) {
 //
 // MergeBitFields would return
 //
-//     1 1 1 1 0
+//     1 1 1 1 1
 //
 // This operation's runtime is O(number of runs).
 func MergeBitFields(a, b *BitField) (*BitField, error) {
