@@ -103,6 +103,10 @@ func MergeBitFields(a, b *BitField) (*BitField, error) {
 }
 
 func MultiMerge(bfs ...*BitField) (*BitField, error) {
+	if len(bfs) == 0 {
+		return NewFromSet(nil), nil
+	}
+
 	iters := make([]rlepluslazy.RunIterator, 0, len(bfs))
 	for _, bf := range bfs {
 		iter, err := bf.sum()
