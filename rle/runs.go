@@ -270,27 +270,29 @@ func Subtract(a, b RunIterator) (RunIterator, error) {
 }
 
 type nextRun struct {
+	set bool
 	run Run
 	err error
 }
 
 type peekIter struct {
 	it    RunIterator
-	stash *nextRun
+	stash nextRun
 }
 
 func (it *peekIter) HasNext() bool {
-	if it.stash != nil {
+	if it.stash.set {
 		return true
 	}
 	return it.it.HasNext()
 }
 
 func (it *peekIter) NextRun() (Run, error) {
-	if it.stash != nil {
-		r := it.stash
-		it.stash = nil
-		return r.run, r.err
+	if it.stash.set {
+		run := it.stash.run
+		err := it.stash.err
+		it.stash = nextRun{}
+		return run, err
 	}
 
 	return it.it.NextRun()
@@ -303,7 +305,8 @@ func (it *peekIter) peek() (Run, error) {
 }
 
 func (it *peekIter) put(run Run, err error) {
-	it.stash = &nextRun{
+	it.stash = nextRun{
+		set: true,
 		run: run,
 		err: err,
 	}
@@ -320,8 +323,7 @@ func newNormIter(it RunIterator) *normIter {
 	}
 	return &normIter{
 		it: &peekIter{
-			it:    it,
-			stash: nil,
+			it: it,
 		},
 	}
 }
