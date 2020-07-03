@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 
 	"golang.org/x/xerrors"
 )
@@ -36,17 +37,17 @@ func (rle *RLE) RunIterator() (RunIterator, error) {
 		if err != nil {
 			return nil, xerrors.Errorf("decoding RLE: %w", err)
 		}
+		var length uint64
 		for source.HasNext() {
 			r, err := source.NextRun()
 			if err != nil {
 				return nil, xerrors.Errorf("reading run: %w", err)
 			}
+			if math.MaxUint64-r.Len < length {
+				return nil, xerrors.New("RLE+ overflows")
+			}
+			length += r.Len
 			rle.runs = append(rle.runs, r)
-		}
-		_, err = Count(&RunSliceIterator{Runs: rle.runs})
-		if err != nil {
-			rle.runs = nil
-			return nil, err
 		}
 	}
 
