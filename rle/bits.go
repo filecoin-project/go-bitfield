@@ -40,7 +40,8 @@ func (it *it2b) Nth(n uint64) (uint64, error) {
 	}
 	it.run.Len -= skip
 	it.curIdx += skip
-	return it.curIdx - 1, it.prep()
+	res := it.curIdx - 1
+	return res, it.prep()
 }
 
 func (it *it2b) prep() error {
