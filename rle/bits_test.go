@@ -44,7 +44,7 @@ func TestNthRuns(t *testing.T) {
 }
 
 func testIter(t *testing.T, ctor func(t *testing.T, bits []uint64) BitIterator) {
-	{
+	for i := 0; i < 10; i++ {
 		bits := randomBits(1000, 1500)
 		iter := ctor(t, bits)
 
@@ -72,7 +72,7 @@ func testIter(t *testing.T, ctor func(t *testing.T, bits []uint64) BitIterator) 
 
 		assert.Equal(t, bits[15:], remainingBits)
 	}
-	{
+	for i := 0; i < 10; i++ {
 		bits := randomBits(1000, 1500)
 		iter := ctor(t, bits)
 
