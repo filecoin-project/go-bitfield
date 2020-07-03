@@ -27,11 +27,6 @@ func FromBuf(buf []byte) (RLE, error) {
 		return RLE{}, xerrors.Errorf("could not create RLE+ for a buffer: %w", ErrWrongVersion)
 	}
 
-	_, err := rle.Count()
-	if err != nil {
-		return RLE{}, err
-	}
-
 	return rle, nil
 }
 
@@ -47,6 +42,11 @@ func (rle *RLE) RunIterator() (RunIterator, error) {
 				return nil, xerrors.Errorf("reading run: %w", err)
 			}
 			rle.runs = append(rle.runs, r)
+		}
+		_, err = Count(&RunSliceIterator{Runs: rle.runs})
+		if err != nil {
+			rle.runs = nil
+			return nil, err
 		}
 	}
 
