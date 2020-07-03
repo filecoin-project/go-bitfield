@@ -252,7 +252,7 @@ func (ni *notIter) NextRun() (Run, error) {
 	if !ni.it.HasNext() {
 		return Run{
 			Val: true,
-			Len: 10000000000, // close enough to infinity
+			Len: 40_000_000_000_000, // close enough to infinity
 		}, nil
 	}
 
