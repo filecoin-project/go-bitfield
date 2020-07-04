@@ -1,7 +1,6 @@
 package rlepluslazy
 
 import (
-	"github.com/multiformats/go-varint"
 	"golang.org/x/xerrors"
 )
 
@@ -45,23 +44,28 @@ func (it *rleIterator) prep() error {
 	} else if it.bv.GetBit() {
 		it.nextRun.Len = uint64(it.bv.Get(4))
 	} else {
-		var buf = make([]byte, 0, 10)
-		for {
-			b := it.bv.GetByte()
-			buf = append(buf, b)
-			if b&0x80 == 0 {
-				break
-			}
-			if len(buf) > 10 {
+		// Modified from the go standard library. Copyright the Go Authors and
+		// released under the BSD License.
+		var x uint64
+		var s uint
+		for i := 0; ; i++ {
+			if i == 10 {
 				return xerrors.Errorf("run too long: %w", ErrDecode)
 			}
+			b := it.bv.GetByte()
+			if b < 0x80 {
+				if i > 9 || i == 9 && b > 1 {
+					return xerrors.Errorf("run too long: %w", ErrDecode)
+				} else if b == 0 && s > 0 {
+					return xerrors.Errorf("invalid run: %w", ErrDecode)
+				}
+				x |= uint64(b) << s
+				break
+			}
+			x |= uint64(b&0x7f) << s
+			s += 7
 		}
-		var err error
-		it.nextRun.Len, _, err = varint.FromUvarint(buf)
-		if err != nil {
-			return err
-		}
-
+		it.nextRun.Len = x
 	}
 
 	it.nextRun.Val = !it.nextRun.Val
