@@ -38,6 +38,7 @@ func (rle *RLE) RunIterator() (RunIterator, error) {
 			return nil, xerrors.Errorf("decoding RLE: %w", err)
 		}
 		var length uint64
+		var runs []Run
 		for source.HasNext() {
 			r, err := source.NextRun()
 			if err != nil {
@@ -47,8 +48,9 @@ func (rle *RLE) RunIterator() (RunIterator, error) {
 				return nil, xerrors.New("RLE+ overflows")
 			}
 			length += r.Len
-			rle.runs = append(rle.runs, r)
+			runs = append(runs, r)
 		}
+		rle.runs = runs
 	}
 
 	return &RunSliceIterator{Runs: rle.runs}, nil
