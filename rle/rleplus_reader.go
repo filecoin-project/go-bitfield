@@ -40,36 +40,28 @@ func (it *rleIterator) NextRun() (Run, error) {
 }
 
 func (it *rleIterator) prep() error {
-	x := it.bv.Get(1)
-
-	switch x {
-	case 1:
+	if it.bv.GetBit() {
 		it.nextRun.Len = 1
-
-	case 0:
-		y := it.bv.Get(1)
-		switch y {
-		case 1:
-			it.nextRun.Len = uint64(it.bv.Get(4))
-		case 0:
-			var buf = make([]byte, 0, 10)
-			for {
-				b := it.bv.Get(8)
-				buf = append(buf, b)
-				if b&0x80 == 0 {
-					break
-				}
-				if len(buf) > 10 {
-					return xerrors.Errorf("run too long: %w", ErrDecode)
-				}
+	} else if it.bv.GetBit() {
+		it.nextRun.Len = uint64(it.bv.Get(4))
+	} else {
+		var buf = make([]byte, 0, 10)
+		for {
+			b := it.bv.GetByte()
+			buf = append(buf, b)
+			if b&0x80 == 0 {
+				break
 			}
-			var err error
-			it.nextRun.Len, _, err = varint.FromUvarint(buf)
-			if err != nil {
-				return err
+			if len(buf) > 10 {
+				return xerrors.Errorf("run too long: %w", ErrDecode)
 			}
-
 		}
+		var err error
+		it.nextRun.Len, _, err = varint.FromUvarint(buf)
+		if err != nil {
+			return err
+		}
+
 	}
 
 	it.nextRun.Val = !it.nextRun.Val
