@@ -105,8 +105,7 @@ func writeBitvec(buf []byte) *wbitvec {
 }
 
 type wbitvec struct {
-	buf   []byte // buffer we will be saving to
-	index int    // index of at which the next byte will be saved
+	buf []byte // buffer we will be saving to
 
 	bits   uint16 // temporary storage for bits
 	bitCap byte   // number of bits stored in temporary storage
@@ -115,15 +114,14 @@ type wbitvec struct {
 func (bv *wbitvec) Out() []byte {
 	if bv.bitCap != 0 {
 		// if there are some bits in temporary storage we need to save them
-		bv.buf = append(bv.buf, 0)[:bv.index+1]
-		bv.buf[bv.index] = byte(bv.bits)
+		bv.buf = append(bv.buf, byte(bv.bits))
 	}
 	if bv.bitCap > 8 {
 		// if we store some needed bits in second byte, save them also
 		bv.buf = append(bv.buf, byte(bv.bits>>8))
-		bv.index++
-		bv.bits = bv.bits - 8
 	}
+	bv.bitCap = 0
+	bv.bits = 0
 	return bv.buf
 }
 
@@ -133,18 +131,9 @@ func (bv *wbitvec) Put(val byte, count byte) {
 	// increase bitCap by the number of bits
 	bv.bitCap = bv.bitCap + count
 
-	// increase len of the buffer if it is needed
-	if bv.index+1 > cap(bv.buf) {
-		bv.buf = append(bv.buf, 0)
+	if bv.bitCap >= 8 {
+		bv.buf = append(bv.buf, byte(bv.bits))
+		bv.bitCap -= 8
+		bv.bits >>= 8
 	}
-	bv.buf = bv.buf[:bv.index+1]
-	// save the bits
-	bv.buf[bv.index] = byte(bv.bits)
-
-	// Warning, dragons again
-	// if bitCap is greater than 7 it underflows, same thing as in Put
-	inc := (7 - bv.bitCap) >> 7    // inc == 1 iff bitcap>=8
-	bv.index = bv.index + int(inc) // increase index for the next save
-	bv.bitCap = bv.bitCap - inc*8  // we store less bits now in temporary buffer
-	bv.bits = bv.bits >> (inc * 8) // we can discard those bits as they were saved
 }
