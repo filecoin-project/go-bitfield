@@ -31,6 +31,13 @@ func FromBuf(buf []byte) (RLE, error) {
 	return rle, nil
 }
 
+// Bytes returns the encoded RLE.
+//
+// Do not modify.
+func (rle *RLE) Bytes() []byte {
+	return rle.buf
+}
+
 func (rle *RLE) RunIterator() (RunIterator, error) {
 	if rle.runs == nil {
 		source, err := DecodeRLE(rle.buf)

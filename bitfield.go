@@ -297,14 +297,21 @@ func (bf *BitField) MarshalCBOR(w io.Writer) error {
 		_, err := w.Write(cbg.CborNull)
 		return err
 	}
-	s, err := bf.RunIterator()
-	if err != nil {
-		return err
-	}
+	var rle []byte
+	if len(bf.set) == 0 && len(bf.unset) == 0 {
+		// If unmodified, avoid re-encoding.
+		rle = bf.rle.Bytes()
+	} else {
 
-	rle, err := rlepluslazy.EncodeRuns(s, []byte{})
-	if err != nil {
-		return err
+		s, err := bf.RunIterator()
+		if err != nil {
+			return err
+		}
+
+		rle, err = rlepluslazy.EncodeRuns(s, []byte{})
+		if err != nil {
+			return err
+		}
 	}
 
 	if len(rle) > 8192 {
@@ -314,7 +321,7 @@ func (bf *BitField) MarshalCBOR(w io.Writer) error {
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajByteString, uint64(len(rle)))); err != nil {
 		return err
 	}
-	if _, err = w.Write(rle); err != nil {
+	if _, err := w.Write(rle); err != nil {
 		return xerrors.Errorf("writing rle: %w", err)
 	}
 	return nil
