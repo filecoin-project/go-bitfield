@@ -27,6 +27,7 @@ func TestJoinClose(t *testing.T) {
 			jc, err := JoinClose(a, tt.closeness)
 			assert.NoError(t, err)
 			bits, err := SliceFromRuns(jc)
+			assert.NoError(t, err)
 			assert.Equal(t, tt.expected, bits)
 		})
 	}

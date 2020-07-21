@@ -298,12 +298,6 @@ func (it *peekIter) NextRun() (Run, error) {
 	return it.it.NextRun()
 }
 
-func (it *peekIter) peek() (Run, error) {
-	run, err := it.NextRun()
-	it.put(run, err)
-	return run, err
-}
-
 func (it *peekIter) put(run Run, err error) {
 	it.stash = nextRun{
 		set: true,
