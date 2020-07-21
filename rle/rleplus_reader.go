@@ -5,6 +5,11 @@ import (
 )
 
 func DecodeRLE(buf []byte) (RunIterator, error) {
+	if len(buf) > 0 && buf[len(buf)-1] == 0 {
+		// trailing zeros bytes not allowed.
+		return nil, xerrors.Errorf("not minimally encoded: %w", ErrDecode)
+	}
+
 	bv := readBitvec(buf)
 
 	ver := bv.Get(2) // Read version

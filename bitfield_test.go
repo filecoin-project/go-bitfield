@@ -1,6 +1,7 @@
 package bitfield
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"math/rand"
@@ -289,6 +290,34 @@ func setIntersect(a, b []uint64) []uint64 {
 	return out
 }
 
+func TestUninitializedBitField(t *testing.T) {
+	var (
+		bf  BitField
+		buf bytes.Buffer
+	)
+	err := bf.MarshalCBOR(&buf)
+	require.NoError(t, err)
+	assert.Equal(t, 1, buf.Len())
+	buf.Reset()
+
+	fromSet := NewFromSet(nil)
+	err = fromSet.MarshalCBOR(&buf)
+	require.NoError(t, err)
+	assert.Equal(t, 1, buf.Len())
+	buf.Reset()
+}
+
+func TestMinimallyEncoded(t *testing.T) {
+	for i := int64(0); i < 100; i++ {
+		bits := getRandIndexSetSeed(100, i)
+		bf := NewFromSet(bits)
+		var buf bytes.Buffer
+		err := bf.MarshalCBOR(&buf)
+		require.NoError(t, err)
+		assert.NotZero(t, buf.Bytes()[buf.Len()-1])
+	}
+}
+
 func TestBitfieldIntersect(t *testing.T) {
 	a := getRandIndexSetSeed(100, 1)
 	b := getRandIndexSetSeed(100, 2)
@@ -352,28 +381,22 @@ func TestBitfieldOrDifferentLenZeroSuffix(t *testing.T) {
 	}
 
 	merge, err := rlepluslazy.Or(ra, rb)
+	require.NoError(t, err)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	mergebytes, err := rlepluslazy.EncodeRuns(merge, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
+	assert.Empty(t, mergebytes)
 
 	b, err := NewFromBytes(mergebytes)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	c, err := b.Count()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
-	if c != 0 {
-		t.Error("expected 0 set bits", c)
-	}
+	assert.Zero(t, c, "expected 0 set bits")
 }
 
 func TestBitfieldSubDifferentLenZeroSuffix(t *testing.T) {
@@ -397,23 +420,16 @@ func TestBitfieldSubDifferentLenZeroSuffix(t *testing.T) {
 	}
 
 	mergebytes, err := rlepluslazy.EncodeRuns(merge, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
+	assert.Empty(t, mergebytes)
 
 	b, err := NewFromBytes(mergebytes)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	c, err := b.Count()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
-	if c != 0 {
-		t.Error("expected 0 set bits", c)
-	}
+	assert.Zero(t, c, "expected 0 set bits")
 }
 
 func TestBitfieldSubtract(t *testing.T) {
