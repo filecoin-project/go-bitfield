@@ -73,24 +73,6 @@ func sum(a, b []uint64) []uint64 {
 	return res
 }
 
-func and(a, b []uint64) []uint64 {
-	amap := make(map[uint64]struct{})
-	for _, x := range a {
-		amap[x] = struct{}{}
-	}
-
-	res := make([]uint64, 0)
-	for _, x := range b {
-		if _, ok := amap[x]; ok {
-			res = append(res, x)
-		}
-
-	}
-	sort.Slice(res, func(i, j int) bool { return res[i] < res[j] })
-
-	return res
-}
-
 func TestOrRandom(t *testing.T) {
 	N := 100
 	for i := 0; i < N; i++ {
