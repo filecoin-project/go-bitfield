@@ -659,3 +659,78 @@ func TestBitfieldBitIter(t *testing.T) {
 		require.NoError(t, err)
 	}
 }
+
+func TestBitfieldCutRandom(t *testing.T) {
+	for i := 0; i < 100; i++ {
+		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
+			testBitFieldCut(t, int64(i))
+		})
+	}
+}
+
+func testBitFieldCut(t *testing.T, seed int64) {
+	a := getRandIndexSetSeed(100, seed)
+	b := getRandIndexSetSeed(100, seed+1)
+
+	bfa := NewFromSet(a)
+	bfb := NewFromSet(b)
+
+	cut, err := CutBitField(bfa, bfb)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	aBits, err := bfa.All(1000)
+	require.NoError(t, err)
+	bBits, err := bfb.All(1000)
+	require.NoError(t, err)
+
+	t.Log(aBits)
+	t.Log(bBits)
+
+	var (
+		expected []uint64
+		offset   uint64
+	)
+outer:
+	for _, bit := range aBits {
+		for len(bBits) > 0 {
+			skipBit := bBits[0]
+			if skipBit > bit {
+				// haven't reached this bit yet.
+				break
+			} else if skipBit <= bit {
+				// ok, skip this bit
+				offset++
+			}
+
+			bBits = bBits[1:]
+
+			// If the bits were equal, skip the outer bit.
+			if skipBit == bit {
+				continue outer
+			}
+		}
+		expected = append(expected, bit-offset)
+	}
+
+	actual, err := cut.All(10000)
+	require.NoError(t, err)
+
+	require.Equal(t, expected, actual)
+}
+
+func TestBitfieldCutSame(t *testing.T) {
+	a := getRandIndexSetSeed(100, 1)
+
+	bfa := NewFromSet(a)
+
+	cut, err := CutBitField(bfa, bfa)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	count, err := cut.Count()
+	require.NoError(t, err)
+	require.Zero(t, count)
+}

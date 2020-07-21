@@ -148,6 +148,96 @@ func MultiMerge(bfs ...*BitField) (*BitField, error) {
 	return NewFromIter(iter)
 }
 
+// CutBitField cuts bitfield B from bitfield A. For every bit in B cut from A,
+// subsequent entries in A are shifted down by one.
+//
+// For example:
+//
+//     a: 0 1 0 1 1 1
+//     b: 0 1 1 0 0 0
+//
+//     c: 0     1 1 1 // cut
+//     c: 0 1 1 1     // remove holes
+func CutBitField(a, b *BitField) (*BitField, error) {
+	aiter, err := a.RunIterator()
+	if err != nil {
+		return nil, err
+	}
+
+	biter, err := b.RunIterator()
+	if err != nil {
+		return nil, err
+	}
+
+	var (
+		run, cutRun rlepluslazy.Run
+		output      []rlepluslazy.Run
+	)
+	for {
+		if !run.Valid() {
+			if !aiter.HasNext() {
+				// All done.
+				break
+			}
+
+			run, err = aiter.NextRun()
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		if !cutRun.Valid() && biter.HasNext() {
+			cutRun, err = biter.NextRun()
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		var newRun rlepluslazy.Run
+		if !cutRun.Valid() {
+			newRun = run // keep remaining runs
+			run.Len = 0
+		} else if cutRun.Len >= run.Len {
+			if !cutRun.Val {
+				newRun = run
+			}
+			cutRun.Len -= run.Len
+			run.Len = 0
+		} else {
+			if !cutRun.Val {
+				newRun = rlepluslazy.Run{
+					Val: run.Val,
+					Len: cutRun.Len,
+				}
+			}
+			run.Len -= cutRun.Len
+			cutRun.Len = 0
+		}
+
+		if newRun.Valid() {
+			if len(output) > 0 && output[len(output)-1].Val == newRun.Val {
+				// Join adjacent runs of 1s. We may cut in the middle of
+				// a run.
+				output[len(output)-1].Len += newRun.Len
+			} else {
+				output = append(output, newRun)
+			}
+		}
+	}
+
+	buf, err := rlepluslazy.EncodeRuns(&rlepluslazy.RunSliceIterator{Runs: output}, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	rle, err := rlepluslazy.FromBuf(buf)
+	if err != nil {
+		return nil, err
+	}
+
+	return &BitField{rle: rle}, nil
+}
+
 func (bf *BitField) RunIterator() (rlepluslazy.RunIterator, error) {
 	iter, err := bf.rle.RunIterator()
 	if err != nil {
