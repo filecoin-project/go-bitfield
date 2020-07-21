@@ -8,6 +8,9 @@ import (
 	"testing"
 
 	rlepluslazy "github.com/filecoin-project/go-bitfield/rle"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func slicesEqual(a, b []uint64) bool {
@@ -519,4 +522,140 @@ func TestBitfieldCopy(t *testing.T) {
 		t.Fatal("mutation affected original bitfield")
 	}
 
+}
+
+func TestBitfieldSetUnset(t *testing.T) {
+	expected := []uint64{4, 5, 8, 10, 11, 13, 14, 17}
+
+	bits := []uint64{5, 6, 8, 10, 11, 13, 14, 17}
+	iter, err := rlepluslazy.RunsFromSlice(bits)
+	require.NoError(t, err)
+
+	bf1, err := NewFromIter(iter)
+	require.NoError(t, err)
+
+	bf1.Set(3)
+	bf1.Set(4)
+	bf1.Set(5)
+
+	bf1.Unset(3)
+	bf1.Unset(6)
+	bf1.Unset(7)
+
+	iter, err = bf1.RunIterator()
+	require.NoError(t, err)
+	bf2, err := NewFromIter(iter)
+	require.NoError(t, err)
+
+	actual, err := bf2.All(100)
+	require.NoError(t, err)
+
+	require.Equal(t, expected, actual)
+}
+
+func TestBitfieldAllMap(t *testing.T) {
+	for i := int64(0); i < 100; i++ {
+		set := getRandIndexSetSeed(100, i)
+		bf := NewFromSet(set)
+
+		asMap, err := bf.AllMap(1000)
+		require.NoError(t, err)
+
+		for _, b := range set {
+			assert.True(t, asMap[b])
+			delete(asMap, b)
+		}
+		assert.Empty(t, asMap)
+
+		_, err = bf.AllMap(3)
+		assert.Error(t, err)
+		_, err = bf.AllMap(0)
+		assert.Error(t, err)
+
+	}
+}
+
+func TestBitfieldForEach(t *testing.T) {
+	for i := int64(0); i < 100; i++ {
+		set := getRandIndexSetSeed(100, i)
+		bf := NewFromSet(set)
+
+		var actual []uint64
+		err := bf.ForEach(func(i uint64) error {
+			actual = append(actual, i)
+			return nil
+		})
+		require.NoError(t, err)
+
+		assert.Equal(t, set, actual)
+
+		testErr := fmt.Errorf("test")
+		err = bf.ForEach(func(i uint64) error {
+			return testErr
+		})
+		assert.Equal(t, err, testErr)
+	}
+}
+
+func TestBitfieldIsSet(t *testing.T) {
+	for i := int64(0); i < 100; i++ {
+		set := getRandIndexSetSeed(100, i)
+		bf := NewFromSet(set)
+
+		for i := uint64(0); i < 100; i++ {
+			expected := false
+			isSet, err := bf.IsSet(i)
+			require.NoError(t, err)
+			if len(set) > 0 {
+				expected = (set[0] == i)
+				if set[0] <= i {
+					set = set[1:]
+				}
+			}
+			assert.Equal(t, expected, isSet)
+		}
+	}
+}
+
+func TestBitfieldFirst(t *testing.T) {
+	set := getRandIndexSet(100)
+	bf := NewFromSet(set)
+
+	first, err := bf.First()
+	require.NoError(t, err)
+	require.Equal(t, set[0], first)
+}
+
+func TestBitfieldIsEmpty(t *testing.T) {
+	set := getRandIndexSet(100)
+	bf := NewFromSet(set)
+
+	isEmpty, err := bf.IsEmpty()
+	require.NoError(t, err)
+	require.False(t, isEmpty)
+
+	empty := NewFromSet(nil)
+
+	isEmpty, err = empty.IsEmpty()
+	require.NoError(t, err)
+	require.True(t, isEmpty)
+}
+
+func TestBitfieldBitIter(t *testing.T) {
+	for i := int64(0); i < 100; i++ {
+		set := getRandIndexSetSeed(100, i)
+		bf := NewFromSet(set)
+
+		bitIter, err := bf.BitIterator()
+		require.NoError(t, err)
+
+		err = bf.ForEach(func(i uint64) error {
+			require.True(t, bitIter.HasNext())
+			next, err := bitIter.Next()
+			require.NoError(t, err)
+			assert.Equal(t, i, next)
+			return nil
+		})
+		require.NoError(t, err)
+	}
 }
