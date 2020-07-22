@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+
+	"golang.org/x/xerrors"
 )
 
 // Version is the 2 lowest bits of this constant
@@ -71,21 +73,21 @@ func Encode(ints []uint64) ([]byte, uint, error) {
 		}
 	}
 
+	// Minimally encode.
+	v.Trim()
+
 	return v.Buf, v.Len, nil
 }
 
 // Decode returns integers represented by the given RLE+ encoding
 //
-// The length of the encoding is not specified.  It is inferred by
-// reading zeroes from the (possibly depleted) BitVector, by virtue
-// of the behavior of BitVector.Take() returning 0 when the end of
-// the BitVector has been reached. This has the downside of not
-// being able to detect corrupt encodings.
-//
 // The passed []byte should be packed in LSB0 bit numbering
 func Decode(buf []byte) (ints []uint64, err error) {
 	if len(buf) == 0 {
 		return
+	} else if buf[len(buf)-1] == 0 {
+		// trailing zeros bytes not allowed.
+		return nil, xerrors.Errorf("not minimally encoded: %w", ErrDecode)
 	}
 
 	v := NewBitVector(buf, LSB0)
@@ -115,22 +117,27 @@ func Decode(buf []byte) (ints []uint64, err error) {
 				// short block
 				runLength = int(take(4))
 			} else {
-				// long block
-				var buf []byte
-				for {
+				// Modified from the go standard library. Copyright the Go Authors and
+				// released under the BSD License.
+				var x uint64
+				var s uint
+				for i := 0; ; i++ {
+					if i == 10 {
+						return nil, xerrors.Errorf("run too long: %w", ErrDecode)
+					}
 					b := take(8)
-					buf = append(buf, b)
-
-					if b&0x80 == 0 {
+					if b < 0x80 {
+						if i > 9 || i == 9 && b > 1 {
+							return nil, xerrors.Errorf("run too long: %w", ErrDecode)
+						} else if b == 0 && s > 0 {
+							return nil, xerrors.Errorf("invalid run: %w", ErrDecode)
+						}
+						x |= uint64(b) << s
 						break
 					}
-
-					// 10 bytes is required to store math.MaxUint64 in a uvarint
-					if len(buf) > 10 {
-						return nil, ErrDecode
-					}
+					x |= uint64(b&0x7f) << s
+					s += 7
 				}
-				x, _ := binary.Uvarint(buf)
 
 				if x == 0 {
 					done = true

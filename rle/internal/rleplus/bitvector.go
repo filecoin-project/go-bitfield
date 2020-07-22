@@ -152,3 +152,21 @@ func (v *BitVector) Iterator(order BitNumbering) func(uint) byte {
 		return
 	}
 }
+
+// Trims zero bits from the end of the bit vector.
+func (v *BitVector) Trim() {
+	for v.Len > 0 {
+		idx := (v.Len - 1) / 8
+		bit := (v.Len - 1) % 8
+		b := v.Buf[idx]
+		if b&(1<<bit) != 0 {
+			return
+		}
+
+		// Trim.
+		v.Len--
+		if bit == 0 {
+			v.Buf = v.Buf[:len(v.Buf)-1]
+		}
+	}
+}

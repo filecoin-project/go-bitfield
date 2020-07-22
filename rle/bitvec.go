@@ -111,6 +111,7 @@ type wbitvec struct {
 	bitCap byte   // number of bits stored in temporary storage
 }
 
+// Returns the resulting bitvector, with any trailing zero bytes removed.
 func (bv *wbitvec) Out() []byte {
 	if bv.bitCap != 0 {
 		// if there are some bits in temporary storage we need to save them
@@ -122,6 +123,12 @@ func (bv *wbitvec) Out() []byte {
 	}
 	bv.bitCap = 0
 	bv.bits = 0
+
+	// Minimally encode.
+	for len(bv.buf) > 0 && bv.buf[len(bv.buf)-1] == 0 {
+		bv.buf = bv.buf[:len(bv.buf)-1]
+	}
+
 	return bv.buf
 }
 
