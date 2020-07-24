@@ -404,7 +404,7 @@ func (bf *BitField) MarshalCBOR(w io.Writer) error {
 		}
 	}
 
-	if len(rle) > 8192 {
+	if len(rle) > cbg.ByteArrayMaxLen {
 		return xerrors.Errorf("encoded bitfield was too large (%d)", len(rle))
 	}
 
@@ -424,7 +424,7 @@ func (bf *BitField) UnmarshalCBOR(r io.Reader) error {
 	if err != nil {
 		return err
 	}
-	if extra > 8192 {
+	if extra > cbg.ByteArrayMaxLen {
 		return fmt.Errorf("array too large")
 	}
 
