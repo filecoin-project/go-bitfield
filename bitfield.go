@@ -15,6 +15,12 @@ var (
 	ErrNoBitsSet       = errors.New("bitfield has no set bits")
 )
 
+// MaxEncodedSize is the maximum encoded size of a bitfield. When expanded into
+// a slice of runs, a bitfield of this size should not exceed 2MiB of memory.
+//
+// This bitfield can fit at least 3072 sparse elements.
+const MaxEncodedSize = 32 << 10
+
 type BitField struct {
 	rle rlepluslazy.RLE
 
@@ -404,7 +410,7 @@ func (bf *BitField) MarshalCBOR(w io.Writer) error {
 		}
 	}
 
-	if len(rle) > cbg.ByteArrayMaxLen {
+	if len(rle) > MaxEncodedSize {
 		return xerrors.Errorf("encoded bitfield was too large (%d)", len(rle))
 	}
 
@@ -424,7 +430,7 @@ func (bf *BitField) UnmarshalCBOR(r io.Reader) error {
 	if err != nil {
 		return err
 	}
-	if extra > cbg.ByteArrayMaxLen {
+	if extra > MaxEncodedSize {
 		return fmt.Errorf("array too large")
 	}
 
