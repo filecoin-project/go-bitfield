@@ -157,3 +157,34 @@ func TestCount(t *testing.T) {
 		})
 	}
 }
+
+func TestFill(t *testing.T) {
+	N := 100
+	for i := 0; i < N; i++ {
+		abits := randomBits(1000, 1500)
+
+		iter, err := RunsFromSlice(abits)
+		assert.NoError(t, err)
+
+		iter2, err := Fill(iter)
+		assert.NoError(t, err)
+
+		count, err := Count(iter2)
+		assert.NoError(t, err)
+
+		assert.Equal(t, abits[len(abits)-1], count-1)
+	}
+}
+
+func TestFillEmpty(t *testing.T) {
+	iter, err := RunsFromSlice(nil)
+	assert.NoError(t, err)
+
+	iter2, err := Fill(iter)
+	assert.NoError(t, err)
+
+	count, err := Count(iter2)
+	assert.NoError(t, err)
+
+	assert.Zero(t, count)
+}
