@@ -750,3 +750,18 @@ func TestBitfieldCutSame(t *testing.T) {
 	require.NoError(t, err)
 	require.Zero(t, count)
 }
+
+func TestLast(t *testing.T) {
+	bits := getRandIndexSetSeed(100, 1)
+	bf := NewFromSet(bits)
+	last, err := bf.Last()
+	require.NoError(t, err)
+
+	assert.Equal(t, last, bits[len(bits)-1])
+}
+
+func TestLastEmpty(t *testing.T) {
+	bf := NewFromSet(nil)
+	_, err := bf.Last()
+	require.EqualError(t, err, ErrNoBitsSet.Error())
+}

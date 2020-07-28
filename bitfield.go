@@ -551,6 +551,37 @@ func (bf *BitField) First() (uint64, error) {
 	return 0, ErrNoBitsSet
 }
 
+// Last returns the index of the last set bit. This function returns
+// ErrNoBitsSet when no bits have been set.
+//
+// This operation's runtime is O(n).
+func (bf *BitField) Last() (uint64, error) {
+	iter, err := bf.RunIterator()
+	if err != nil {
+		return 0, err
+	}
+
+	var (
+		at, maxplusone uint64
+	)
+	for iter.HasNext() {
+		run, err := iter.NextRun()
+		if err != nil {
+			return 0, err
+		}
+
+		at += run.Len
+
+		if run.Val {
+			maxplusone = at
+		}
+	}
+	if maxplusone == 0 {
+		return 0, ErrNoBitsSet
+	}
+	return maxplusone - 1, nil
+}
+
 // IsEmpty returns true if the bitset is empty.
 //
 // This operation's runtime is O(1).

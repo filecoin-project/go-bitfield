@@ -347,39 +347,29 @@ func (it *normIter) NextRun() (Run, error) {
 	return it.it.NextRun()
 }
 
-func LastIndex(iter RunIterator, val bool) (uint64, error) {
-	var at uint64
-	var max uint64
+// Returns iterator with all bits up to the last bit set:
+// in:  11100000111010001110000
+// out: 1111111111111111111
+func Fill(iter RunIterator) (RunIterator, error) {
+	var at, length uint64
 	for iter.HasNext() {
 		r, err := iter.NextRun()
 		if err != nil {
-			return 0, err
+			return nil, err
 		}
 
 		at += r.Len
 
-		if r.Val == val {
-			max = at
+		if r.Val {
+			length = at
 		}
 	}
 
-	return max, nil
-}
-
-// Returns iterator with all bits up to the last bit set:
-// in:  11100000111010001110000
-// out: 1111111111111111111
-func Fill(i RunIterator) (RunIterator, error) {
-	max, err := LastIndex(i, true)
-	if err != nil {
-		return nil, err
-	}
-
 	var runs []Run
-	if max > 0 {
+	if length > 0 {
 		runs = append(runs, Run{
 			Val: true,
-			Len: max,
+			Len: length,
 		})
 	}
 
