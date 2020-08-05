@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func benchmark(b *testing.B, cb func(b *testing.B, bf *BitField)) {
+func benchmark(b *testing.B, cb func(b *testing.B, bf BitField)) {
 	for _, size := range []int{
 		0,
 		1,
@@ -17,7 +17,7 @@ func benchmark(b *testing.B, cb func(b *testing.B, bf *BitField)) {
 	}
 }
 
-func benchmarkSize(b *testing.B, size int, cb func(b *testing.B, bf *BitField)) {
+func benchmarkSize(b *testing.B, size int, cb func(b *testing.B, bf BitField)) {
 	b.Run(fmt.Sprintf("%d", size), func(b *testing.B) {
 		vals := getRandIndexSet(size)
 		bf := NewFromSet(vals)
@@ -48,7 +48,7 @@ func benchmarkSize(b *testing.B, size int, cb func(b *testing.B, bf *BitField)) 
 }
 
 func BenchmarkCount(b *testing.B) {
-	benchmark(b, func(b *testing.B, bf *BitField) {
+	benchmark(b, func(b *testing.B, bf BitField) {
 		_, err := bf.Count()
 		if err != nil {
 			b.Fatal(err)
@@ -57,7 +57,7 @@ func BenchmarkCount(b *testing.B) {
 }
 
 func BenchmarkIsEmpty(b *testing.B) {
-	benchmark(b, func(b *testing.B, bf *BitField) {
+	benchmark(b, func(b *testing.B, bf BitField) {
 		_, err := bf.IsEmpty()
 		if err != nil {
 			b.Fatal(err)

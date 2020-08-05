@@ -51,8 +51,8 @@ func NewFromBytes(rle []byte) (BitField, error) {
 
 }
 
-func newWithRle(rle rlepluslazy.RLE) *BitField {
-	return &BitField{
+func newWithRle(rle rlepluslazy.RLE) BitField {
+	return BitField{
 		set:   make(map[uint64]struct{}),
 		unset: make(map[uint64]struct{}),
 		rle:   rle,
@@ -60,8 +60,8 @@ func newWithRle(rle rlepluslazy.RLE) *BitField {
 }
 
 // NewFromSet constructs a bitfield from the given set.
-func NewFromSet(setBits []uint64) *BitField {
-	res := &BitField{
+func NewFromSet(setBits []uint64) BitField {
+	res := BitField{
 		set:   make(map[uint64]struct{}, len(setBits)),
 		unset: make(map[uint64]struct{}),
 	}
@@ -72,15 +72,15 @@ func NewFromSet(setBits []uint64) *BitField {
 }
 
 // NewFromIter constructs a BitField from the RunIterator.
-func NewFromIter(r rlepluslazy.RunIterator) (*BitField, error) {
+func NewFromIter(r rlepluslazy.RunIterator) (BitField, error) {
 	buf, err := rlepluslazy.EncodeRuns(r, nil)
 	if err != nil {
-		return nil, err
+		return BitField{}, err
 	}
 
 	rle, err := rlepluslazy.FromBuf(buf)
 	if err != nil {
-		return nil, err
+		return BitField{}, err
 	}
 
 	return newWithRle(rle), nil
@@ -98,30 +98,30 @@ func NewFromIter(r rlepluslazy.RunIterator) (*BitField, error) {
 //     1 1 1 1 1
 //
 // This operation's runtime is O(number of runs).
-func MergeBitFields(a, b *BitField) (*BitField, error) {
+func MergeBitFields(a, b BitField) (BitField, error) {
 	ra, err := a.RunIterator()
 	if err != nil {
-		return nil, err
+		return BitField{}, err
 	}
 
 	rb, err := b.RunIterator()
 	if err != nil {
-		return nil, err
+		return BitField{}, err
 	}
 
 	merge, err := rlepluslazy.Or(ra, rb)
 	if err != nil {
-		return nil, err
+		return BitField{}, err
 	}
 
 	mergebytes, err := rlepluslazy.EncodeRuns(merge, nil)
 	if err != nil {
-		return nil, err
+		return BitField{}, err
 	}
 
 	rle, err := rlepluslazy.FromBuf(mergebytes)
 	if err != nil {
-		return nil, err
+		return BitField{}, err
 	}
 
 	return newWithRle(rle), nil
@@ -133,7 +133,7 @@ func MergeBitFields(a, b *BitField) (*BitField, error) {
 // more efficient when merging more than two BitFields.
 //
 // This operation's runtime is O(number of runs * number of bitfields).
-func MultiMerge(bfs ...*BitField) (*BitField, error) {
+func MultiMerge(bfs ...BitField) (BitField, error) {
 	if len(bfs) == 0 {
 		return NewFromSet(nil), nil
 	}
@@ -142,14 +142,14 @@ func MultiMerge(bfs ...*BitField) (*BitField, error) {
 	for _, bf := range bfs {
 		iter, err := bf.RunIterator()
 		if err != nil {
-			return nil, err
+			return BitField{}, err
 		}
 		iters = append(iters, iter)
 	}
 
 	iter, err := rlepluslazy.Union(iters...)
 	if err != nil {
-		return nil, err
+		return BitField{}, err
 	}
 	return NewFromIter(iter)
 }
@@ -164,15 +164,15 @@ func MultiMerge(bfs ...*BitField) (*BitField, error) {
 //
 //     c: 0     1 1 1 // cut
 //     c: 0 1 1 1     // remove holes
-func CutBitField(a, b *BitField) (*BitField, error) {
+func CutBitField(a, b BitField) (BitField, error) {
 	aiter, err := a.RunIterator()
 	if err != nil {
-		return nil, err
+		return BitField{}, err
 	}
 
 	biter, err := b.RunIterator()
 	if err != nil {
-		return nil, err
+		return BitField{}, err
 	}
 
 	var (
@@ -188,14 +188,14 @@ func CutBitField(a, b *BitField) (*BitField, error) {
 
 			run, err = aiter.NextRun()
 			if err != nil {
-				return nil, err
+				return BitField{}, err
 			}
 		}
 
 		if !cutRun.Valid() && biter.HasNext() {
 			cutRun, err = biter.NextRun()
 			if err != nil {
-				return nil, err
+				return BitField{}, err
 			}
 		}
 
@@ -233,18 +233,18 @@ func CutBitField(a, b *BitField) (*BitField, error) {
 
 	buf, err := rlepluslazy.EncodeRuns(&rlepluslazy.RunSliceIterator{Runs: output}, nil)
 	if err != nil {
-		return nil, err
+		return BitField{}, err
 	}
 
 	rle, err := rlepluslazy.FromBuf(buf)
 	if err != nil {
-		return nil, err
+		return BitField{}, err
 	}
 
-	return &BitField{rle: rle}, nil
+	return BitField{rle: rle}, nil
 }
 
-func (bf *BitField) RunIterator() (rlepluslazy.RunIterator, error) {
+func (bf BitField) RunIterator() (rlepluslazy.RunIterator, error) {
 	iter, err := bf.rle.RunIterator()
 	if err != nil {
 		return nil, err
@@ -287,7 +287,7 @@ func (bf *BitField) RunIterator() (rlepluslazy.RunIterator, error) {
 //
 // This operation's runtime is O(1) up-front. However, it adds an O(bits
 // explicitly set) cost to all other operations.
-func (bf *BitField) Set(bit uint64) {
+func (bf BitField) Set(bit uint64) {
 	delete(bf.unset, bit)
 	bf.set[bit] = struct{}{}
 }
@@ -296,7 +296,7 @@ func (bf *BitField) Set(bit uint64) {
 //
 // This operation's runtime is O(1). However, it adds an O(bits
 // explicitly unset) cost to all other operations.
-func (bf *BitField) Unset(bit uint64) {
+func (bf BitField) Unset(bit uint64) {
 	delete(bf.set, bit)
 	bf.unset[bit] = struct{}{}
 }
@@ -310,7 +310,7 @@ func (bf *BitField) Unset(bit uint64) {
 // Count() will return 3.
 //
 // This operation's runtime is O(number of runs).
-func (bf *BitField) Count() (uint64, error) {
+func (bf BitField) Count() (uint64, error) {
 	s, err := bf.RunIterator()
 	if err != nil {
 		return 0, err
@@ -329,7 +329,7 @@ func (bf *BitField) Count() (uint64, error) {
 //     []uint64{0, 3}
 //
 // This operation's runtime is O(number of bits).
-func (bf *BitField) All(max uint64) ([]uint64, error) {
+func (bf BitField) All(max uint64) ([]uint64, error) {
 	c, err := bf.Count()
 	if err != nil {
 		return nil, xerrors.Errorf("count errror: %w", err)
@@ -362,7 +362,7 @@ func (bf *BitField) All(max uint64) ([]uint64, error) {
 //     map[uint64]bool{0: true, 3: true}
 //
 // This operation's runtime is O(number of bits).
-func (bf *BitField) AllMap(max uint64) (map[uint64]bool, error) {
+func (bf BitField) AllMap(max uint64) (map[uint64]bool, error) {
 	c, err := bf.Count()
 	if err != nil {
 		return nil, xerrors.Errorf("count errror: %w", err)
@@ -388,11 +388,7 @@ func (bf *BitField) AllMap(max uint64) (map[uint64]bool, error) {
 	return out, nil
 }
 
-func (bf *BitField) MarshalCBOR(w io.Writer) error {
-	if bf == nil {
-		_, err := w.Write(cbg.CborNull)
-		return err
-	}
+func (bf BitField) MarshalCBOR(w io.Writer) error {
 	var rle []byte
 	if len(bf.set) == 0 && len(bf.unset) == 0 {
 		// If unmodified, avoid re-encoding.
@@ -454,7 +450,7 @@ func (bf *BitField) UnmarshalCBOR(r io.Reader) error {
 	return nil
 }
 
-func (bf *BitField) MarshalJSON() ([]byte, error) {
+func (bf BitField) MarshalJSON() ([]byte, error) {
 
 	c, err := bf.Copy()
 	if err != nil {
@@ -478,7 +474,7 @@ func (bf *BitField) UnmarshalJSON(b []byte) error {
 // ForEach iterates over each set bit.
 //
 // This operation's runtime is O(bits set).
-func (bf *BitField) ForEach(f func(uint64) error) error {
+func (bf BitField) ForEach(f func(uint64) error) error {
 	iter, err := bf.RunIterator()
 	if err != nil {
 		return err
@@ -508,7 +504,7 @@ func (bf *BitField) ForEach(f func(uint64) error) error {
 // IsSet returns true if the given bit is set.
 //
 // This operation's runtime is O(number of runs).
-func (bf *BitField) IsSet(x uint64) (bool, error) {
+func (bf BitField) IsSet(x uint64) (bool, error) {
 	if _, ok := bf.set[x]; ok {
 		return true, nil
 	}
@@ -529,7 +525,7 @@ func (bf *BitField) IsSet(x uint64) (bool, error) {
 // ErrNoBitsSet when no bits have been set.
 //
 // This operation's runtime is O(1).
-func (bf *BitField) First() (uint64, error) {
+func (bf BitField) First() (uint64, error) {
 	iter, err := bf.RunIterator()
 	if err != nil {
 		return 0, err
@@ -555,7 +551,7 @@ func (bf *BitField) First() (uint64, error) {
 // ErrNoBitsSet when no bits have been set.
 //
 // This operation's runtime is O(n).
-func (bf *BitField) Last() (uint64, error) {
+func (bf BitField) Last() (uint64, error) {
 	iter, err := bf.RunIterator()
 	if err != nil {
 		return 0, err
@@ -585,7 +581,7 @@ func (bf *BitField) Last() (uint64, error) {
 // IsEmpty returns true if the bitset is empty.
 //
 // This operation's runtime is O(1).
-func (bf *BitField) IsEmpty() (bool, error) {
+func (bf BitField) IsEmpty() (bool, error) {
 	_, err := bf.First()
 	switch err {
 	case ErrNoBitsSet:
@@ -610,10 +606,10 @@ func (bf *BitField) IsEmpty() (bool, error) {
 //    0 0 0 1 0 1 0
 //
 // This operation's runtime is O(number of runs).
-func (bf *BitField) Slice(start, count uint64) (*BitField, error) {
+func (bf BitField) Slice(start, count uint64) (BitField, error) {
 	iter, err := bf.RunIterator()
 	if err != nil {
-		return nil, err
+		return BitField{}, err
 	}
 
 	valsUntilStart := start
@@ -623,7 +619,7 @@ func (bf *BitField) Slice(start, count uint64) (*BitField, error) {
 	for iter.HasNext() && valsUntilStart > 0 {
 		r, err := iter.NextRun()
 		if err != nil {
-			return nil, err
+			return BitField{}, err
 		}
 
 		if r.Val {
@@ -653,7 +649,7 @@ func (bf *BitField) Slice(start, count uint64) (*BitField, error) {
 	for iter.HasNext() && outcount < count {
 		r, err := iter.NextRun()
 		if err != nil {
-			return nil, err
+			return BitField{}, err
 		}
 
 		if r.Val {
@@ -672,20 +668,20 @@ func (bf *BitField) Slice(start, count uint64) (*BitField, error) {
 		}
 	}
 	if outcount < count {
-		return nil, fmt.Errorf("not enough bits set in field to satisfy slice count")
+		return BitField{}, fmt.Errorf("not enough bits set in field to satisfy slice count")
 	}
 
 	buf, err := rlepluslazy.EncodeRuns(&rlepluslazy.RunSliceIterator{Runs: sliceRuns}, nil)
 	if err != nil {
-		return nil, err
+		return BitField{}, err
 	}
 
 	rle, err := rlepluslazy.FromBuf(buf)
 	if err != nil {
-		return nil, err
+		return BitField{}, err
 	}
 
-	return &BitField{rle: rle}, nil
+	return BitField{rle: rle}, nil
 }
 
 // IntersectBitField returns the intersection of the two BitFields.
@@ -700,30 +696,30 @@ func (bf *BitField) Slice(start, count uint64) (*BitField, error) {
 //     0 1 0 0 0
 //
 // This operation's runtime is O(number of runs).
-func IntersectBitField(a, b *BitField) (*BitField, error) {
+func IntersectBitField(a, b BitField) (BitField, error) {
 	ar, err := a.RunIterator()
 	if err != nil {
-		return nil, err
+		return BitField{}, err
 	}
 
 	br, err := b.RunIterator()
 	if err != nil {
-		return nil, err
+		return BitField{}, err
 	}
 
 	andIter, err := rlepluslazy.And(ar, br)
 	if err != nil {
-		return nil, err
+		return BitField{}, err
 	}
 
 	buf, err := rlepluslazy.EncodeRuns(andIter, nil)
 	if err != nil {
-		return nil, err
+		return BitField{}, err
 	}
 
 	rle, err := rlepluslazy.FromBuf(buf)
 	if err != nil {
-		return nil, err
+		return BitField{}, err
 	}
 
 	return newWithRle(rle), nil
@@ -742,30 +738,30 @@ func IntersectBitField(a, b *BitField) (*BitField, error) {
 //     0 0 1 0 1
 //
 // This operation's runtime is O(number of runs).
-func SubtractBitField(a, b *BitField) (*BitField, error) {
+func SubtractBitField(a, b BitField) (BitField, error) {
 	ar, err := a.RunIterator()
 	if err != nil {
-		return nil, err
+		return BitField{}, err
 	}
 
 	br, err := b.RunIterator()
 	if err != nil {
-		return nil, err
+		return BitField{}, err
 	}
 
 	andIter, err := rlepluslazy.Subtract(ar, br)
 	if err != nil {
-		return nil, err
+		return BitField{}, err
 	}
 
 	buf, err := rlepluslazy.EncodeRuns(andIter, nil)
 	if err != nil {
-		return nil, err
+		return BitField{}, err
 	}
 
 	rle, err := rlepluslazy.FromBuf(buf)
 	if err != nil {
-		return nil, err
+		return BitField{}, err
 	}
 
 	return newWithRle(rle), nil
@@ -773,27 +769,27 @@ func SubtractBitField(a, b *BitField) (*BitField, error) {
 
 // Copy flushes the bitfield and returns a copy that can be mutated
 // without changing the original values
-func (bf *BitField) Copy() (*BitField, error) {
+func (bf BitField) Copy() (BitField, error) {
 	r, err := bf.RunIterator()
 	if err != nil {
-		return nil, err
+		return BitField{}, err
 	}
 
 	buf, err := rlepluslazy.EncodeRuns(r, nil)
 	if err != nil {
-		return nil, err
+		return BitField{}, err
 	}
 
 	rle, err := rlepluslazy.FromBuf(buf)
 	if err != nil {
-		return nil, err
+		return BitField{}, err
 	}
 
 	return newWithRle(rle), nil
 }
 
 // BitIterator iterates over the bits in the bitmap
-func (bf *BitField) BitIterator() (rlepluslazy.BitIterator, error) {
+func (bf BitField) BitIterator() (rlepluslazy.BitIterator, error) {
 	r, err := bf.RunIterator()
 	if err != nil {
 		return nil, err

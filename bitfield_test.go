@@ -168,7 +168,7 @@ func multiUnionArrs(arrs [][]uint64) []uint64 {
 
 func TestBitfieldMultiUnion(t *testing.T) {
 	var sets [][]uint64
-	var bfs []*BitField
+	var bfs []BitField
 	for i := 0; i < 15; i++ {
 		s := getRandIndexSetSeed(10000, 1)
 		sets = append(sets, s)
@@ -218,12 +218,12 @@ func TestBitfieldJson(t *testing.T) {
 
 func TestEmptyBitfieldJson(t *testing.T) {
 	type ct struct {
-		B *BitField
+		B BitField
 	}
 
 	ebf := New()
 	s := &ct{
-		B: &ebf,
+		B: ebf,
 	}
 
 	b, err := json.Marshal(s)
@@ -234,10 +234,6 @@ func TestEmptyBitfieldJson(t *testing.T) {
 	var u ct
 	if err := json.Unmarshal(b, &u); err != nil {
 		t.Fatal(err)
-	}
-
-	if u.B == nil {
-		t.Fatal("u.B is nil", string(b))
 	}
 
 	set, err := u.B.Count()
@@ -461,10 +457,10 @@ func TestBitfieldSubtract(t *testing.T) {
 }
 
 // <specs-actors>
-func BitFieldUnion(bfs ...*BitField) (*BitField, error) {
+func BitFieldUnion(bfs ...BitField) (BitField, error) {
 	// TODO: optimize me
 	for len(bfs) > 1 {
-		var next []*BitField
+		var next []BitField
 		for i := 0; i < len(bfs); i += 2 {
 			if i+1 >= len(bfs) {
 				next = append(next, bfs[i])
@@ -472,7 +468,7 @@ func BitFieldUnion(bfs ...*BitField) (*BitField, error) {
 			}
 			merged, err := MergeBitFields(bfs[i], bfs[i+1])
 			if err != nil {
-				return nil, err
+				return BitField{}, err
 			}
 
 			next = append(next, merged)
