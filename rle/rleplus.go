@@ -56,9 +56,7 @@ func (rle *RLE) Validate() error {
 				return xerrors.New("RLE+ overflows")
 			}
 			length += r.Len
-			//runs = append(runs, r)
 		}
-		//rle.runs = runs
 		rle.validated = true
 	}
 	return nil
