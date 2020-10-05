@@ -34,7 +34,6 @@ jobs:
     steps:
       - install-deps
       - prepare
-      - go/mod-download
       - go/mod-tidy-check
 
   build-all:
@@ -42,7 +41,6 @@ jobs:
     steps:
       - install-deps
       - prepare
-      - go/mod-download
       - run:
           command: make build
       - store_artifacts:
@@ -51,28 +49,81 @@ jobs:
           path: specs-actors
 
   test-all:
-    executor: golang
+    parameters:
+      executor:
+        type: executor
+        default: golang
+      go-test-flags:
+        type: string
+        default: "-timeout 30m"
+        description: Flags passed to go test.
+      packages:
+        type: string
+        default: "./..."
+        description: Import paths of packages to be tested.
+      test-suite-name:
+        type: string
+        default: unit
+        description: Test suite name to report to CircleCI.
+      gotestsum-format:
+        type: string
+        default: pkgname-and-test-fails
+        description: gotestsum format. https://github.com/gotestyourself/gotestsum#format
+      coverage:
+        type: string
+        default: -coverprofile=coverage.txt -coverpkg=github.com/filecoin-project/lotus/...
+        description: Coverage flag. Set to the empty string to disable.
+      codecov-upload:
+        type: boolean
+        default: false
+        description: |
+          Upload coverage report to https://codecov.io/. Requires the codecov API token to be
+          set as an environment variable for private projects.
+    executor: << parameters.executor >>
     steps:
       - install-deps
       - prepare
-      - go/mod-download
+      - go/install-gotestsum:
+          gobin: $HOME/.local/bin
+          version: 0.5.2
       - run:
+          name: go test
           command: |
-            make test-coverage
-            mkdir -p /tmp/artifacts
-            mv coverage.out /tmp/artifacts/coverage.out
-      - codecov/upload:
-          file: /tmp/artifacts/coverage.out
+            mkdir -p /tmp/test-reports/<< parameters.test-suite-name >>
+            mkdir -p /tmp/test-artifacts
+            gotestsum \
+              --format << parameters.gotestsum-format >> \
+              --junitfile /tmp/test-reports/<< parameters.test-suite-name >>/junit.xml \
+              --jsonfile /tmp/test-artifacts/<< parameters.test-suite-name >>.json \
+              -- \
+              << parameters.coverage >> \
+              << parameters.go-test-flags >> \
+              << parameters.packages >>
+          no_output_timeout: 30m
+      - store_test_results:
+          path: /tmp/test-reports
       - store_artifacts:
-          path: specs-actors
+          path: /tmp/test-artifacts/<< parameters.test-suite-name >>.json
+      - when:
+          condition: << parameters.codecov-upload >>
+          steps:
+            - go/install: {package: bash}
+            - go/install: {package: curl}
+            - run:
+                shell: /bin/bash -eo pipefail
+                command: |
+                  bash <(curl -s https://codecov.io/bash)
 
-  lint: &lint
+  lint: 
     description: |
       Run golangci-lint.
     parameters:
       executor:
         type: executor
         default: golang
+      golangci-lint-version:
+        type: string
+        default: 1.27.0
       concurrency:
         type: string
         default: '2'
@@ -88,19 +139,22 @@ jobs:
     steps:
       - install-deps
       - prepare
+      - go/install-golangci-lint:
+          gobin: $HOME/.local/bin
+          version: << parameters.golangci-lint-version >>
       - run:
           name: Lint
           command: |
-            golangci-lint run -v \
+            $HOME/.local/bin/golangci-lint run -v \
               --concurrency << parameters.concurrency >> << parameters.args >>
 
-  lint-all:
-    <<: *lint
 
 workflows:
   version: 2.1
   ci:
     jobs:
-      - lint-all
+      - lint
       - mod-tidy-check
-      - test-all
+      - test-all:
+          codecov-upload: true
+          test-suite-name: full
