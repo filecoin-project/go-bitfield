@@ -1,8 +1,11 @@
 package bitfield
 
 import (
+	"encoding/base64"
 	"fmt"
 	"testing"
+
+	rlepluslazy "github.com/filecoin-project/go-bitfield/rle"
 )
 
 func benchmark(b *testing.B, cb func(b *testing.B, bf BitField)) {
@@ -63,4 +66,32 @@ func BenchmarkIsEmpty(b *testing.B) {
 			b.Fatal(err)
 		}
 	})
+}
+
+var Res uint64
+
+func BenchmarkBigDecodeEncode(b *testing.B) {
+	bb, err := base64.StdEncoding.DecodeString(bigBitfield)
+	if err != nil {
+		b.Fatal(err)
+	}
+	for i := 0; i < b.N; i++ {
+		bitF, err := NewFromBytes(bb)
+		if err != nil {
+			b.Fatal(err)
+		}
+		{
+			s, err := bitF.RunIterator()
+			if err != nil {
+				b.Fatal(err)
+			}
+
+			rle, err := rlepluslazy.EncodeRuns(s, []byte{})
+			if err != nil {
+				b.Fatal(err)
+			}
+			Res += uint64(rle[1])
+		}
+
+	}
 }
