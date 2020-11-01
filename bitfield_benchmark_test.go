@@ -95,3 +95,55 @@ func BenchmarkBigDecodeEncode(b *testing.B) {
 
 	}
 }
+
+func bitfieldStats(t *testing.T, bf BitField) (size int, runs uint64, last uint64) {
+	s, err := bf.RunIterator()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for s.HasNext() {
+		run, err := s.NextRun()
+		if err != nil {
+			t.Fatal(err)
+		}
+		runs++
+		last += run.Len
+	}
+	size = len(bf.rle.Bytes())
+	return
+}
+
+func TestFillBitfieldUpTo(t *testing.T) {
+	bb, err := base64.StdEncoding.DecodeString(bigBitfield)
+	if err != nil {
+		t.Fatal(err)
+	}
+	bitF, err := NewFromBytes(bb)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	size, runs, last := bitfieldStats(t, bitF)
+	t.Logf("current size: %d, runs: %d, last %d", size, runs, last)
+	s, err := bitF.RunIterator()
+	if err != nil {
+		t.Fatal(err)
+	}
+	trimmed, err := rlepluslazy.Or(s, &rlepluslazy.RunSliceIterator{
+		Runs: []rlepluslazy.Run{{Val: true, Len: last - 20<<10}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	trimEnc, err := rlepluslazy.EncodeRuns(trimmed, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	bitFTrim, err := NewFromBytes(trimEnc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	size, runs, last = bitfieldStats(t, bitFTrim)
+	t.Logf("trimed size: %d, runs: %d, last %d", size, runs, last)
+
+}

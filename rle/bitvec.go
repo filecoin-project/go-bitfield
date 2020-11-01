@@ -49,6 +49,14 @@ func (bv *rbitvec) GetByte() byte {
 	return res
 }
 
+func (bv *rbitvec) Peek6() byte {
+	return byte(bv.bits) & 0x3f
+}
+
+func (bv *rbitvec) Drop(num byte) {
+	bv.Get(num)
+}
+
 func (bv *rbitvec) GetBit() bool {
 	// The specialized GetBit is easier for the compiler to optimize, for some reason.
 
@@ -61,40 +69,37 @@ func (bv *rbitvec) GetBit() bool {
 		bv.bits |= uint16(bv.vec[bv.index]) << bv.bitCap
 	}
 
-	// When we advance one by one, this branch is very predictable (and
-	// faster than fancy math).
+	inc := byte(0)
 	if bv.bitCap < 8 {
-		bv.index += 1
-		bv.bitCap += 8
+		inc = 1
 	}
+	bv.index += int(inc) // increase index if we need more bits
+	bv.bitCap += inc * 8 // increase bitCap by 8
 	return res
 }
 
 func (bv *rbitvec) Get(count byte) byte {
-	res := byte(bv.bits) & bitMasks[count] // select count bits
-	bv.bits >>= count                      // remove those bits from storage
-	bv.bitCap -= count                     // decrease nuber of stored bits
+	res := byte(bv.bits) & (1<<count - 1)
+	bv.bits >>= count  // remove those bits from storage
+	bv.bitCap -= count // decrease nuber of stored bits
 
 	if bv.index < len(bv.vec) { // if vector allows
 		// add bits onto the end of temporary storage
 		bv.bits |= uint16(bv.vec[bv.index]) << bv.bitCap
 	}
 
-	// Here be dragons
 	// This is equivalent to
 	// if bv.bitCap < 8 {
 	//     bv.index++
 	//     bv.bitCap = bv.bitCap + 8
 	// }
-	// but implemented without branches because the branch here is unpredictable
-	// Why this is without branches and reading has branch?
-	//  Because branch above is predictable, in 99.99% of cases it will be true
-
-	// if bitCap < 8 it underflows, then high bits get set to 1s
-	// we shift by 7 so the highest bit is in place of the lowest
-	inc := (bv.bitCap - 8) >> 7 // inc == 1 iff bitcap<8 (+10% perf)
-	bv.index += int(inc)        // increase index if we need more bits
-	bv.bitCap += inc * 8        // increase bitCap by 8
+	// but implemented so go doesn't generate branches.
+	inc := byte(0)
+	if bv.bitCap < 8 {
+		inc = 1
+	}
+	bv.index += int(inc) // increase index if we need more bits
+	bv.bitCap += inc * 8 // increase bitCap by 8
 
 	return res
 }
