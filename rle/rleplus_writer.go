@@ -8,8 +8,6 @@ import (
 var ErrSameValRuns = errors.New("2 consecutive runs with the same value")
 
 func EncodeRuns(rit RunIterator, buf []byte) ([]byte, error) {
-	rit = newNormIter(rit)
-
 	bv := writeBitvec(buf)
 	bv.Put(0, 2)
 
@@ -21,6 +19,9 @@ func EncodeRuns(rit RunIterator, buf []byte) ([]byte, error) {
 		run, err := rit.NextRun()
 		if err != nil {
 			return nil, err
+		}
+		if !rit.HasNext() && !run.Val {
+			break
 		}
 
 		if first {

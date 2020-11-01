@@ -306,47 +306,6 @@ func (it *peekIter) put(run Run, err error) {
 	}
 }
 
-// normIter trims the last run of 0s
-type normIter struct {
-	it *peekIter
-}
-
-func newNormIter(it RunIterator) *normIter {
-	if nit, ok := it.(*normIter); ok {
-		return nit
-	}
-	return &normIter{
-		it: &peekIter{
-			it: it,
-		},
-	}
-}
-
-func (it *normIter) HasNext() bool {
-	if !it.it.HasNext() {
-		return false
-	}
-
-	// check if this is the last run
-	cur, err := it.it.NextRun()
-	if err != nil {
-		it.it.put(cur, err)
-		return true
-	}
-
-	notLast := it.it.HasNext()
-	it.it.put(cur, err)
-	if notLast {
-		return true
-	}
-
-	return cur.Val
-}
-
-func (it *normIter) NextRun() (Run, error) {
-	return it.it.NextRun()
-}
-
 // Returns iterator with all bits up to the last bit set:
 // in:  11100000111010001110000
 // out: 1111111111111111111
