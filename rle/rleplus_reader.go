@@ -5,31 +5,34 @@ import (
 )
 
 type decodeInfo struct {
-	runs   [6]Run
-	i      byte // index of first decoded run
+	length byte // length of the run
+	i      byte // i+1 is number of repeats of above run lengths
 	n      byte // number of bits to read
-	varint bool
+	varint bool // varint signifies that futher bits need to be processed as a varint
 }
-
-var decodeTable = [1 << 6]decodeInfo{}
 
 func init() {
 	buildDecodeTable()
 }
-func buildDecodeTable() {
-	// 1 : run of 1 bit
-	var runs [6]Run
-	for i := 0; i < 6; i++ {
-		runs[i].Len = 1
-	}
 
+// this is a LUT for all possible 6 bit codes and what they decode into
+// possible combinations are:
+// 0bxxxxxx1 - 1 run of 1
+// 0bxxxxx11 - 2 runs of 1
+// up to 0b111111 - 6 runs of 1
+// 0bAAAA10 - 1 run of length 0bAAAA
+// 0bxxxx00 - var int run, the decode value not defined in LUT
+var decodeTable = [1 << 6]decodeInfo{}
+
+func buildDecodeTable() {
+	// runs of 1s 0bxxxxxx1, 0bxxxx11 ...
 	for i := 1; i <= 6; i++ {
-		for j := 0; j < 1<<6>>i; j++ {
+		for j := 0; j < (1<<6)>>i; j++ {
 			idx := bitMasks[i] | byte(j<<i)
 			decodeTable[idx] = decodeInfo{
-				runs: runs,
-				i:    byte(i - 1),
-				n:    byte(i),
+				length: 1,
+				i:      byte(i - 1),
+				n:      byte(i),
 			}
 		}
 	}
@@ -38,15 +41,16 @@ func buildDecodeTable() {
 	for i := 0; i < 16; i++ {
 		idx := 0b10 | i<<2
 		decodeTable[idx] = decodeInfo{
-			runs: [6]Run{{Len: uint64(i)}},
-			i:    0,
-			n:    6,
+			length: byte(i),
+			i:      0,
+			n:      6,
 		}
 	}
 	// 00 + 4 bit
 	for i := 0; i < 16; i++ {
 		idx := 0b00 | i<<2
 		decodeTable[idx] = decodeInfo{
+			i:      0,
 			n:      2,
 			varint: true,
 		}
@@ -78,38 +82,37 @@ func DecodeRLE(buf []byte) (RunIterator, error) {
 }
 
 type rleIterator struct {
-	bv       *rbitvec
-	nextRuns [6]Run
+	bv     *rbitvec
+	length uint64
 
 	lastVal bool
 	i       uint8
 }
 
 func (it *rleIterator) HasNext() bool {
-	return it.nextRuns[0].Valid()
+	return it.length != 0
 }
 
 func (it *rleIterator) NextRun() (r Run, err error) {
-	ret := it.nextRuns[it.i]
-	ret.Val = !it.lastVal
+	ret := Run{Len: it.length, Val: !it.lastVal}
 	it.lastVal = ret.Val
 
-	it.i--
-	if it.i == 255 { // if i was 0 before subtraction
+	if it.i == 0 {
 		err = it.prep()
+	} else {
+		it.i--
 	}
 	return ret, err
 }
 
 func (it *rleIterator) prep() error {
 	idx := it.bv.Peek6()
-	decode := &decodeTable[idx] // taking pointer here is worth -19% perf
+	decode := decodeTable[idx]
+	_ = it.bv.Get(decode.n)
 
-	it.bv.Drop(decode.n)
 	it.i = decode.i
-	if !decode.varint {
-		it.nextRuns = decode.runs
-	} else {
+	it.length = uint64(decode.length)
+	if decode.varint {
 		// Modified from the go standard library. Copyright the Go Authors and
 		// released under the BSD License.
 		var x uint64
@@ -131,7 +134,7 @@ func (it *rleIterator) prep() error {
 			x |= uint64(b&0x7f) << s
 			s += 7
 		}
-		it.nextRuns[0].Len = x
+		it.length = x
 	}
 	return nil
 }

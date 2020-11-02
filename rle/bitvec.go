@@ -53,10 +53,6 @@ func (bv *rbitvec) Peek6() byte {
 	return byte(bv.bits) & 0x3f
 }
 
-func (bv *rbitvec) Drop(num byte) {
-	bv.Get(num)
-}
-
 func (bv *rbitvec) GetBit() bool {
 	// The specialized GetBit is easier for the compiler to optimize, for some reason.
 
