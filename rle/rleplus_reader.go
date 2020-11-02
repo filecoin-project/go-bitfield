@@ -17,10 +17,6 @@ func init() {
 	buildDecodeTable()
 }
 func buildDecodeTable() {
-	// empty entries mean end of bitfield
-	// i will be 0, n will be 0, Run.Len == 0 meanining end
-	// with size of 6, all 4 bit values
-
 	// 1 : run of 1 bit
 	var runs [6]Run
 	for i := 0; i < 6; i++ {
