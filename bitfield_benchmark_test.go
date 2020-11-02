@@ -22,8 +22,11 @@ func benchmark(b *testing.B, cb func(b *testing.B, bf BitField)) {
 
 func benchmarkSize(b *testing.B, size int, cb func(b *testing.B, bf BitField)) {
 	b.Run(fmt.Sprintf("%d", size), func(b *testing.B) {
-		vals := getRandIndexSet(size)
-		bf := NewFromSet(vals)
+		ri := rlepluslazy.NewFromZipfDist(55, size)
+		bf, err := NewFromIter(ri)
+		if err != nil {
+			b.Fatal(err)
+		}
 		b.Run("basic", func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
 				cb(b, bf)
