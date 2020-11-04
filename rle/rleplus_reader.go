@@ -1,6 +1,8 @@
 package rlepluslazy
 
 import (
+	"math/bits"
+
 	"golang.org/x/xerrors"
 )
 
@@ -15,44 +17,37 @@ func init() {
 	buildDecodeTable()
 }
 
-// this is a LUT for all possible 6 bit codes and what they decode into
+// This is a LUT for all possible 6 bit codes and what they decode into
 // possible combinations are:
 // 0bxxxxxx1 - 1 run of 1
 // 0bxxxxx11 - 2 runs of 1
 // up to 0b111111 - 6 runs of 1
 // 0bAAAA10 - 1 run of length 0bAAAA
-// 0bxxxx00 - var int run, the decode value not defined in LUT
+// 0bxxxx00 - varint run, the decode value not defined in LUT
 var decodeTable = [1 << 6]decodeInfo{}
 
 func buildDecodeTable() {
-	// runs of 1s 0bxxxxxx1, 0bxxxx11 ...
-	for i := 1; i <= 6; i++ {
-		for j := 0; j < (1<<6)>>i; j++ {
-			idx := bitMasks[i] | byte(j<<i)
+	for idx := uint8(0); int(idx) < len(decodeTable); idx++ {
+		switch {
+		case bits.TrailingZeros8(^idx) > 0:
+			i := uint8(bits.TrailingZeros8(^idx))
 			decodeTable[idx] = decodeInfo{
 				length: 1,
-				i:      byte(i - 1),
-				n:      byte(i),
+				i:      i - 1,
+				n:      i,
 			}
-		}
-	}
-
-	// 01 + 4bit : run of 0 to 15
-	for i := 0; i < 16; i++ {
-		idx := 0b10 | i<<2
-		decodeTable[idx] = decodeInfo{
-			length: byte(i),
-			i:      0,
-			n:      6,
-		}
-	}
-	// 00 + 4 bit
-	for i := 0; i < 16; i++ {
-		idx := 0b00 | i<<2
-		decodeTable[idx] = decodeInfo{
-			i:      0,
-			n:      2,
-			varint: true,
+		case idx&0b11 == 0b10:
+			// 01 + 4bit : run of 0 to 15
+			decodeTable[idx] = decodeInfo{
+				length: byte(idx >> 2),
+				i:      0,
+				n:      6,
+			}
+		case idx&0b11 == 0b00:
+			decodeTable[idx] = decodeInfo{
+				n:      2,
+				varint: true,
+			}
 		}
 	}
 }
