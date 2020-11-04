@@ -44,5 +44,35 @@ func TestDecodeTable(t *testing.T) {
 }
 
 func TestAll8bit(t *testing.T) {
+	runs := []Run{}
+	for k := uint64(1); k < 64; k++ {
+		for i := 1; i < 7; i++ {
+			for j := 0; j < i; j++ {
+				runs = append(runs, Run{Len: 1})
+			}
+			runs = append(runs, Run{Len: k})
+		}
+	}
+	for i := uint64(3); i < 256; i++ {
+		runs = append(runs, Run{Len: i})
+	}
+	// normalize
+	for i := range runs {
+		runs[i].Val = i%2 == 0
+	}
 
+	origin := &RunSliceIterator{Runs: runs}
+	enc, err := EncodeRuns(origin, nil)
+	assert.NoError(t, err)
+
+	origin = &RunSliceIterator{Runs: runs}
+	originSlice, err := SliceFromRuns(origin)
+	assert.NoError(t, err)
+
+	decoded, err := DecodeRLE(enc)
+	assert.NoError(t, err)
+
+	decodedSlice, err := SliceFromRuns(decoded)
+	assert.NoError(t, err)
+	assert.Equal(t, originSlice, decodedSlice)
 }

@@ -697,9 +697,6 @@ func testBitFieldCut(t *testing.T, seed int64) {
 	bBits, err := bfb.All(1000)
 	require.NoError(t, err)
 
-	t.Log(aBits)
-	t.Log(bBits)
-
 	var (
 		expected []uint64
 		offset   uint64
