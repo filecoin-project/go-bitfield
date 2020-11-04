@@ -21,19 +21,6 @@ func readBitvec(vec []byte) *rbitvec {
 	return bv
 }
 
-// bitMasks is a mask for selecting N first bits out of a byte
-var bitMasks = [9]byte{
-	0x0,
-	0x1,
-	0x3,
-	0x7,
-	0xF,
-	0x1F,
-	0x3F,
-	0x7F,
-	0xFF,
-}
-
 func (bv *rbitvec) GetByte() byte {
 	// Advancing byte by byte is simpler than advancing an odd number of
 	// bits because we _always_ load the next byte.
