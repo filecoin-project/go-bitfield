@@ -42,3 +42,7 @@ func TestDecodeTable(t *testing.T) {
 		t.Fatalf("not handled")
 	}
 }
+
+func TestAll8bit(t *testing.T) {
+
+}
