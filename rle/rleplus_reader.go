@@ -77,6 +77,7 @@ func DecodeRLE(buf []byte) (RunIterator, error) {
 	return it, nil
 }
 
+// ValidateRLE validates the RLE+ in buf does not overflow Uint64
 func ValidateRLE(buf []byte) error {
 	if len(buf) > 0 && buf[len(buf)-1] == 0 {
 		// trailing zeros bytes not allowed.
@@ -88,6 +89,8 @@ func ValidateRLE(buf []byte) error {
 	if ver != Version {
 		return ErrWrongVersion
 	}
+
+	// this is run value bit, as we are validating lengths we don't care about it
 	bv.Get(1)
 
 	totalLen := uint64(0)
