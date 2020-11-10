@@ -1,6 +1,7 @@
 package bitfield
 
 import (
+	"bytes"
 	"encoding/base64"
 	"fmt"
 	"testing"
@@ -104,12 +105,48 @@ func BenchmarkBigValidate(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
+	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		bitF, err := NewFromBytes(bb)
 		if err != nil {
 			b.Fatal(err)
 		}
 		_, _ = bitF.RunIterator()
+	}
+}
+
+func BenchmarkBigAllocateSector(b *testing.B) {
+	bb, err := base64.StdEncoding.DecodeString(bigBitfield)
+	if err != nil {
+		b.Fatal(err)
+	}
+	sectorNo := uint64(0)
+	{
+		bitF, err := NewFromBytes(bb)
+		if err != nil {
+			b.Fatal(err)
+		}
+		last, err := bitF.Last()
+		if err != nil {
+			b.Fatal(err)
+		}
+		sectorNo = last + 10
+	}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		bitF, err := NewFromBytes(bb)
+		if err != nil {
+			b.Fatal(err)
+		}
+		_, err = bitF.IsSet(sectorNo)
+		if err != nil {
+			b.Fatal(err)
+		}
+		bitF.Set(sectorNo)
+		err = bitF.MarshalCBOR(&bytes.Buffer{})
+		if err != nil {
+			b.Fatal(err)
+		}
 	}
 }
 
