@@ -1,6 +1,7 @@
 package rlepluslazy
 
 import (
+	"math"
 	"math/bits"
 
 	"golang.org/x/xerrors"
@@ -76,6 +77,47 @@ func DecodeRLE(buf []byte) (RunIterator, error) {
 	return it, nil
 }
 
+func ValidateRLE(buf []byte) error {
+	if len(buf) > 0 && buf[len(buf)-1] == 0 {
+		// trailing zeros bytes not allowed.
+		return xerrors.Errorf("not minimally encoded: %w", ErrDecode)
+	}
+	bv := readBitvec(buf)
+
+	ver := bv.Get(2) // Read version
+	if ver != Version {
+		return ErrWrongVersion
+	}
+	bv.Get(1)
+
+	totalLen := uint64(0)
+	for {
+		idx := bv.Peek6()
+		decode := decodeTable[idx]
+		_ = bv.Get(decode.n)
+
+		var runLen uint64
+		if decode.varint {
+			x, err := decodeBFVarint(bv)
+			if err != nil {
+				return err
+			}
+			runLen = x
+		} else {
+			runLen = uint64(decode.i+1) * uint64(decode.length)
+		}
+
+		if math.MaxUint64-runLen < totalLen {
+			return xerrors.Errorf("RLE+ overflow")
+		}
+		totalLen += runLen
+		if runLen == 0 {
+			break
+		}
+	}
+	return nil
+}
+
 type rleIterator struct {
 	bv     *rbitvec
 	length uint64
@@ -100,6 +142,31 @@ func (it *rleIterator) NextRun() (r Run, err error) {
 	return ret, err
 }
 
+func decodeBFVarint(bv *rbitvec) (uint64, error) {
+	// Modified from the go standard library. Copyright the Go Authors and
+	// released under the BSD License.
+	var x uint64
+	var s uint
+	for i := 0; ; i++ {
+		if i == 10 {
+			return 0, xerrors.Errorf("run too long: %w", ErrDecode)
+		}
+		b := bv.GetByte()
+		if b < 0x80 {
+			if i > 9 || i == 9 && b > 1 {
+				return 0, xerrors.Errorf("run too long: %w", ErrDecode)
+			} else if b == 0 && s > 0 {
+				return 0, xerrors.Errorf("invalid run: %w", ErrDecode)
+			}
+			x |= uint64(b) << s
+			break
+		}
+		x |= uint64(b&0x7f) << s
+		s += 7
+	}
+	return x, nil
+}
+
 func (it *rleIterator) prep() error {
 	idx := it.bv.Peek6()
 	decode := decodeTable[idx]
@@ -108,26 +175,9 @@ func (it *rleIterator) prep() error {
 	it.i = decode.i
 	it.length = uint64(decode.length)
 	if decode.varint {
-		// Modified from the go standard library. Copyright the Go Authors and
-		// released under the BSD License.
-		var x uint64
-		var s uint
-		for i := 0; ; i++ {
-			if i == 10 {
-				return xerrors.Errorf("run too long: %w", ErrDecode)
-			}
-			b := it.bv.GetByte()
-			if b < 0x80 {
-				if i > 9 || i == 9 && b > 1 {
-					return xerrors.Errorf("run too long: %w", ErrDecode)
-				} else if b == 0 && s > 0 {
-					return xerrors.Errorf("invalid run: %w", ErrDecode)
-				}
-				x |= uint64(b) << s
-				break
-			}
-			x |= uint64(b&0x7f) << s
-			s += 7
+		x, err := decodeBFVarint(it.bv)
+		if err != nil {
+			return err
 		}
 		it.length = x
 	}

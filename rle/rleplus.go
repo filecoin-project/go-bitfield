@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math"
 
 	"golang.org/x/xerrors"
 )
@@ -41,23 +40,7 @@ func (rle *RLE) Bytes() []byte {
 // Validate is a separate function to show up on profile for repeated decode evaluation
 func (rle *RLE) Validate() error {
 	if !rle.validated {
-		source, err := DecodeRLE(rle.buf)
-		if err != nil {
-			return xerrors.Errorf("decoding RLE: %w", err)
-		}
-		var length uint64
-
-		for source.HasNext() {
-			r, err := source.NextRun()
-			if err != nil {
-				return xerrors.Errorf("reading run: %w", err)
-			}
-			if math.MaxUint64-r.Len < length {
-				return xerrors.New("RLE+ overflows")
-			}
-			length += r.Len
-		}
-		rle.validated = true
+		return ValidateRLE(rle.buf)
 	}
 	return nil
 }
