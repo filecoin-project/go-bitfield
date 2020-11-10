@@ -99,6 +99,20 @@ func BenchmarkBigDecodeEncode(b *testing.B) {
 	}
 }
 
+func BenchmarkBigValidate(b *testing.B) {
+	bb, err := base64.StdEncoding.DecodeString(bigBitfield)
+	if err != nil {
+		b.Fatal(err)
+	}
+	for i := 0; i < b.N; i++ {
+		bitF, err := NewFromBytes(bb)
+		if err != nil {
+			b.Fatal(err)
+		}
+		_, _ = bitF.RunIterator()
+	}
+}
+
 func bitfieldStats(t *testing.T, bf BitField) (size int, runs uint64, last uint64) {
 	s, err := bf.RunIterator()
 	if err != nil {
