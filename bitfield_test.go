@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"math"
 	"math/rand"
 	"sort"
 	"testing"
@@ -453,6 +454,24 @@ func TestBitfieldSubtract(t *testing.T) {
 		fmt.Println(out)
 		fmt.Println(exp)
 		t.Fatal("subtraction is wrong")
+	}
+}
+func TestBitfieldSubtractLargeElement(t *testing.T) {
+	bfa := NewFromSet([]uint64{1, 2, math.MaxUint64 - 1})
+	bfb := NewFromSet([]uint64{1})
+
+	inter, err := SubtractBitField(bfa, bfb)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	out, err := inter.All(10000)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !slicesEqual(out, []uint64{2, math.MaxUint64 - 1}) {
+		t.Fatalf("subtraction is wrong: %v", out)
 	}
 }
 
