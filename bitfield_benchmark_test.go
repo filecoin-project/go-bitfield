@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	rlepluslazy "github.com/filecoin-project/go-bitfield/rle"
+	"github.com/stretchr/testify/require"
 )
 
 func benchmark(b *testing.B, cb func(b *testing.B, bf BitField)) {
@@ -199,5 +200,37 @@ func TestFillBitfieldUpTo(t *testing.T) {
 	}
 	size, runs, last = bitfieldStats(t, bitFTrim)
 	t.Logf("trimed size: %d, runs: %d, last %d", size, runs, last)
+
+}
+
+// This test captures a common case where we need to merge a bunch of bitfields,
+// but every nth bitfield is expected to be empty. For example, merging all
+// faults, terminations, and unproven sectors.
+func BenchmarkMultiMergeEmpty(b *testing.B) {
+	var bfs []BitField
+
+	for i := int64(0); i < 30; i++ {
+		var bf BitField
+		var err error
+		switch i % 3 {
+		case 0:
+			bf = NewFromSet(nil)
+		case 1:
+			bf, err = NewFromIter(rlepluslazy.NewFromZipfDist(i, 10))
+			require.NoError(b, err)
+		case 2:
+			bf, err = NewFromIter(rlepluslazy.NewFromZipfDist(i, 2000))
+			require.NoError(b, err)
+		default:
+			panic("impossible")
+		}
+		bfs = append(bfs, bf)
+	}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		merged, err := MultiMerge(bfs...)
+		require.NoError(b, err)
+		_, _ = merged.RunIterator()
+	}
 
 }
