@@ -8,6 +8,11 @@ import (
 )
 
 func Or(a, b RunIterator) (RunIterator, error) {
+	if !a.HasNext() {
+		return b, nil
+	} else if !b.HasNext() {
+		return a, nil
+	}
 	it := addIt{a: a, b: b}
 	return &it, it.prep()
 }
@@ -218,7 +223,12 @@ func (ai *andIter) NextRun() (run Run, err error) {
 }
 
 func And(a, b RunIterator) (RunIterator, error) {
-	return &andIter{a: a, b: b}, nil
+	if a.HasNext() && b.HasNext() {
+		return &andIter{a: a, b: b}, nil
+	} else {
+		// empty
+		return new(RunSliceIterator), nil
+	}
 }
 
 type RunSliceIterator struct {
