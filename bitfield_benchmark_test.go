@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"fmt"
+	"math"
 	"testing"
 
 	rlepluslazy "github.com/filecoin-project/go-bitfield/rle"
@@ -233,4 +234,17 @@ func BenchmarkMultiMergeEmpty(b *testing.B) {
 		_, _ = merged.RunIterator()
 	}
 
+}
+
+func BenchmarkBitfieldSubtractLargeElement(b *testing.B) {
+	bfa := NewFromSet([]uint64{1, 2, math.MaxUint64 - 1})
+	bfb := NewFromSet([]uint64{1})
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, err := SubtractBitField(bfa, bfb)
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
 }

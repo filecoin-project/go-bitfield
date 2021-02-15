@@ -260,9 +260,10 @@ func (ni *notIter) HasNext() bool {
 
 func (ni *notIter) NextRun() (Run, error) {
 	if !ni.it.HasNext() {
+		// At this point, we'll keep returning "infinite" runs of true.
 		return Run{
 			Val: true,
-			Len: 40_000_000_000_000, // close enough to infinity
+			Len: math.MaxUint64,
 		}, nil
 	}
 
