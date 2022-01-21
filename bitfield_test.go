@@ -205,14 +205,17 @@ func TestBitfieldJson(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	var buf []uint64
+	var buf = struct {
+		Count uint64
+		RLE   []uint64
+	}{}
 	if err := json.Unmarshal(b, &buf); err != nil {
 		t.Fatal(err)
 	}
 
 	// (0) (1) (2, 3, 4), (5, 6, 7), (8, 9), (10, 11, 12), (13, 14), 15
 	runs := []uint64{1, 1, 3, 3, 2, 3, 2, 1}
-	if !slicesEqual(runs, buf) {
+	if !slicesEqual(runs, buf.RLE) {
 		t.Fatal("runs not encoded correctly")
 	}
 }
@@ -260,6 +263,20 @@ func TestBitfieldJsonRoundTrip(t *testing.T) {
 	var out BitField
 	if err := out.UnmarshalJSON(b); err != nil {
 		t.Fatal(err)
+	}
+
+	bfCount, err := bf.Count()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	outCount, err := out.Count()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if bfCount != outCount {
+		t.Fatalf("round trip failed")
 	}
 
 	outv, err := out.All(100000)

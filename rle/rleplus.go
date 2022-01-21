@@ -75,16 +75,24 @@ func (rle *RLE) MarshalJSON() ([]byte, error) {
 		return nil, err
 	}
 
-	var ret []uint64
+	count, err := rle.Count()
+	if err != nil {
+		return nil, err
+	}
+
+	var ret = struct {
+		Count uint64
+		RLE   []uint64
+	}{}
 	if r.HasNext() {
 		first, err := r.NextRun()
 		if err != nil {
 			return nil, err
 		}
 		if first.Val {
-			ret = append(ret, 0)
+			ret.RLE = append(ret.RLE, 0)
 		}
-		ret = append(ret, first.Len)
+		ret.RLE = append(ret.RLE, first.Len)
 
 		for r.HasNext() {
 			next, err := r.NextRun()
@@ -92,17 +100,21 @@ func (rle *RLE) MarshalJSON() ([]byte, error) {
 				return nil, err
 			}
 
-			ret = append(ret, next.Len)
+			ret.RLE = append(ret.RLE, next.Len)
 		}
 	} else {
-		ret = []uint64{0}
+		ret.RLE = []uint64{0}
 	}
+	ret.Count = count
 
 	return json.Marshal(ret)
 }
 
 func (rle *RLE) UnmarshalJSON(b []byte) error {
-	var buf []uint64
+	var buf = struct {
+		Count uint64
+		RLE   []uint64
+	}{}
 
 	if err := json.Unmarshal(b, &buf); err != nil {
 		return err
@@ -110,7 +122,7 @@ func (rle *RLE) UnmarshalJSON(b []byte) error {
 
 	runs := []Run{}
 	val := false
-	for i, v := range buf {
+	for i, v := range buf.RLE {
 		if v == 0 {
 			if i != 0 {
 				return xerrors.New("Cannot have a zero-length run except at start")
