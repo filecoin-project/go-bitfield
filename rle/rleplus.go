@@ -67,6 +67,11 @@ func (rle *RLE) Count() (uint64, error) {
 	return Count(it)
 }
 
+type jsonRes struct {
+	Count uint64
+	RLE   []uint64
+}
+
 // Encoded as an array of run-lengths, always starting with zeroes (absent values)
 // E.g.: The set {0, 1, 2, 8, 9} is the bitfield 1110000011, and would be marshalled as [0, 3, 5, 2]
 func (rle *RLE) MarshalJSON() ([]byte, error) {
@@ -80,10 +85,7 @@ func (rle *RLE) MarshalJSON() ([]byte, error) {
 		return nil, err
 	}
 
-	var ret = struct {
-		Count uint64
-		RLE   []uint64
-	}{}
+	var ret = jsonRes{}
 	if r.HasNext() {
 		first, err := r.NextRun()
 		if err != nil {
@@ -111,10 +113,7 @@ func (rle *RLE) MarshalJSON() ([]byte, error) {
 }
 
 func (rle *RLE) UnmarshalJSON(b []byte) error {
-	var buf = struct {
-		Count uint64
-		RLE   []uint64
-	}{}
+	var buf = jsonRes{}
 
 	if err := json.Unmarshal(b, &buf); err != nil {
 		return err

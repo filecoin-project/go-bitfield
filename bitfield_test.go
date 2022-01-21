@@ -213,6 +213,16 @@ func TestBitfieldJson(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	bfCount, err := bf.Count()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// assert the count is the same in the unmarshalled bitfield and original
+	if bfCount != buf.Count {
+		t.Fatal(err)
+	}
+
 	// (0) (1) (2, 3, 4), (5, 6, 7), (8, 9), (10, 11, 12), (13, 14), 15
 	runs := []uint64{1, 1, 3, 3, 2, 3, 2, 1}
 	if !slicesEqual(runs, buf.RLE) {
