@@ -1,4 +1,4 @@
-module github.com/filecoin-project/go-bitfield
+module github.com/frrist/go-bitfield
 
 go 1.16
 

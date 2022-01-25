@@ -4,7 +4,7 @@ import (
 	"math/rand"
 	"testing"
 
-	"github.com/filecoin-project/go-bitfield/rle/internal/rleplus"
+	"github.com/frrist/go-bitfield/rle/internal/rleplus"
 	"github.com/stretchr/testify/assert"
 )
 

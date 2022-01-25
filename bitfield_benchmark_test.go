@@ -7,7 +7,7 @@ import (
 	"math"
 	"testing"
 
-	rlepluslazy "github.com/filecoin-project/go-bitfield/rle"
+	rlepluslazy "github.com/frrist/go-bitfield/rle"
 	"github.com/stretchr/testify/require"
 )
 

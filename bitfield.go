@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 
-	rlepluslazy "github.com/filecoin-project/go-bitfield/rle"
+	rlepluslazy "github.com/frrist/go-bitfield/rle"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 )

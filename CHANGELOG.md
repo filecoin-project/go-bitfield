@@ -20,6 +20,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - SECURITY.md with instructions on how to report security issues.
 - Optimized decode/encode workflow by 42%
 
-[Unreleased]: https://github.com/filecoin-project/go-bitfield/compare/v0.2.2...HEAD
-[0.2.2]: https://github.com/filecoin-project/go-bitfield/compare/v0.2.1...v0.2.2 
+[Unreleased]: https://github.com/frrist/go-bitfield/compare/v0.2.2...HEAD
+[0.2.2]: https://github.com/frrist/go-bitfield/compare/v0.2.1...v0.2.2 
 
