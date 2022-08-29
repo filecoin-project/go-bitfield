@@ -90,12 +90,12 @@ func NewFromIter(r rlepluslazy.RunIterator) (BitField, error) {
 //
 // For example, given two BitFields:
 //
-//     0 1 1 0 1
-//     1 1 0 1 0
+//	0 1 1 0 1
+//	1 1 0 1 0
 //
 // MergeBitFields would return
 //
-//     1 1 1 1 1
+//	1 1 1 1 1
 //
 // This operation's runtime is O(number of runs).
 func MergeBitFields(a, b BitField) (BitField, error) {
@@ -159,11 +159,11 @@ func MultiMerge(bfs ...BitField) (BitField, error) {
 //
 // For example:
 //
-//     a: 0 1 0 1 1 1
-//     b: 0 1 1 0 0 0
+//	a: 0 1 0 1 1 1
+//	b: 0 1 1 0 0 0
 //
-//     c: 0     1 1 1 // cut
-//     c: 0 1 1 1     // remove holes
+//	c: 0     1 1 1 // cut
+//	c: 0 1 1 1     // remove holes
 func CutBitField(a, b BitField) (BitField, error) {
 	aiter, err := a.RunIterator()
 	if err != nil {
@@ -305,7 +305,7 @@ func (bf BitField) Unset(bit uint64) {
 //
 // For example, given:
 //
-//     1 0 1 1
+//	1 0 1 1
 //
 // Count() will return 3.
 //
@@ -322,11 +322,11 @@ func (bf BitField) Count() (uint64, error) {
 //
 // For example, given:
 //
-//     1 0 0 1
+//	1 0 0 1
 //
 // All will return:
 //
-//     []uint64{0, 3}
+//	[]uint64{0, 3}
 //
 // This operation's runtime is O(number of bits).
 func (bf BitField) All(max uint64) ([]uint64, error) {
@@ -355,11 +355,11 @@ func (bf BitField) All(max uint64) ([]uint64, error) {
 //
 // For example, given:
 //
-//     1 0 0 1
+//	1 0 0 1
 //
 // All will return:
 //
-//     map[uint64]bool{0: true, 3: true}
+//	map[uint64]bool{0: true, 3: true}
 //
 // This operation's runtime is O(number of bits).
 func (bf BitField) AllMap(max uint64) (map[uint64]bool, error) {
@@ -599,11 +599,11 @@ func (bf BitField) IsEmpty() (bool, error) {
 //
 // For example, given:
 //
-//    1 0 1 1 0 1 1
+//	1 0 1 1 0 1 1
 //
 // bf.Slice(2, 2) would return:
 //
-//    0 0 0 1 0 1 0
+//	0 0 0 1 0 1 0
 //
 // This operation's runtime is O(number of runs).
 func (bf BitField) Slice(start, count uint64) (BitField, error) {
@@ -688,12 +688,12 @@ func (bf BitField) Slice(start, count uint64) (BitField, error) {
 //
 // For example, given two BitFields:
 //
-//     0 1 1 0 1
-//     1 1 0 1 0
+//	0 1 1 0 1
+//	1 1 0 1 0
 //
 // IntersectBitField would return
 //
-//     0 1 0 0 0
+//	0 1 0 0 0
 //
 // This operation's runtime is O(number of runs).
 func IntersectBitField(a, b BitField) (BitField, error) {
@@ -730,12 +730,12 @@ func IntersectBitField(a, b BitField) (BitField, error) {
 //
 // For example, given two BitFields:
 //
-//     0 1 1 0 1 // a
-//     1 1 0 1 0 // b
+//	0 1 1 0 1 // a
+//	1 1 0 1 0 // b
 //
 // SubtractBitFields would return
 //
-//     0 0 1 0 1
+//	0 0 1 0 1
 //
 // This operation's runtime is O(number of runs).
 func SubtractBitField(a, b BitField) (BitField, error) {
