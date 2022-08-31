@@ -137,7 +137,7 @@ func (v *BitVector) Take(index uint, count uint, order BitNumbering) (out byte) 
 // Iterator returns a function, which when invoked, returns the number
 // of bits requested, and increments an internal cursor.
 //
-// When the end of the BitVector is reached, it returns zeroes indefinitely
+// # When the end of the BitVector is reached, it returns zeroes indefinitely
 //
 // Panics if count is out of range
 func (v *BitVector) Iterator(order BitNumbering) func(uint) byte {

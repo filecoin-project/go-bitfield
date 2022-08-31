@@ -30,15 +30,15 @@ var (
 // The RLE+ spec is here: https://github.com/filecoin-project/specs/blob/master/data-structures.md#rle-bitset-encoding
 // and is described by the BNF Grammar:
 //
-//    <encoding> ::= <header> <blocks>
-//    <header> ::= <version> <bit>
-//    <version> ::= "00"
-//    <blocks> ::= <block> <blocks> | ""
-//    <block> ::= <block_single> | <block_short> | <block_long>
-//    <block_single> ::= "1"
-//    <block_short> ::= "01" <bit> <bit> <bit> <bit>
-//    <block_long> ::= "00" <unsigned_varint>
-//    <bit> ::= "0" | "1"
+//	<encoding> ::= <header> <blocks>
+//	<header> ::= <version> <bit>
+//	<version> ::= "00"
+//	<blocks> ::= <block> <blocks> | ""
+//	<block> ::= <block_single> | <block_short> | <block_long>
+//	<block_single> ::= "1"
+//	<block_short> ::= "01" <bit> <bit> <bit> <bit>
+//	<block_long> ::= "00" <unsigned_varint>
+//	<bit> ::= "0" | "1"
 //
 // Filecoin specific:
 // The encoding is returned as a []byte, each byte packed starting with the low-order bit (LSB0)
