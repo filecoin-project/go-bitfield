@@ -1,7 +1,6 @@
 module github.com/filecoin-project/go-bitfield
 
-go 1.23
-toolchain go1.24.1
+go 1.23.0
 
 require (
 	github.com/stretchr/testify v1.4.0
